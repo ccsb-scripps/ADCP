@@ -960,6 +960,7 @@ int main(int argc, char *argv[])
 	//char *seq;
 	simulation_params sim_params;
 
+	
 	signal(SIGTERM, graceful_exit);
 
 #ifdef PARALLEL
@@ -969,8 +970,8 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 #endif
 
+	
 	/* SET SIMULATION PARAMS */
-
 	param_initialise(&sim_params); //set default
 	set_lj_default_params(&(sim_params.protein_model)); // set the default parameters for the LJ model
 	read_options(argc, argv, &sim_params);
@@ -978,6 +979,9 @@ int main(int argc, char *argv[])
 	//param_print(sim_params,sim_params.outfile); //default + read-in
 
 	set_random_seed(&sim_params);
+
+	//set a timer
+	time_t startTime = time(NULL);
 
 	/* set different default simulation params for NS and MC */
 	if(sim_params.NS){
@@ -1153,6 +1157,8 @@ int main(int argc, char *argv[])
 	free(emapvalue);
 	free(dmapvalue);
 	fprintf(stderr, "best target energy %g\n", targetBest);
-	fprintf(stderr,"The program has successfully finished. :)  Bye-bye!\n");
+
+
+	fprintf(stderr,"The program has successfully finished in %d seconds. :)  Bye-bye!\n", time(NULL)- startTime);
 	return EXIT_SUCCESS;
 }
