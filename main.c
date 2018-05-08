@@ -312,10 +312,12 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					sim_params->protein_model.external_k[0] = external_k * 0.5;
 					fprintf(stderr, "No improvement after 1000000, Heat up system\n");
 					swapInd = rand() % (swapLength + 1);
-					while (swapEnergy[swapInd] > targetBest + 5.) swapInd = rand() % (swapLength + 1);
+					while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
                     //fprintf(stderr, "swap in best %d \n", swapInd);
-					copybetween(chain, swapChains[swapLength]);
+					//swapInd = swapLength;
+					copybetween(chain, swapChains[swapInd]);
 					bestIndex = i*sim_params->pace + j;
+					
 					fprintf(stderr, "swap out no improv curr %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 				}
 				else if (currTargetEnergy != lastTargetEnergy && (i*sim_params->pace + j - lastIndex) > sim_params->pace) {
@@ -378,9 +380,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 							if (1 || external_k == sim_params->protein_model.external_k[0]) {
 
 								swapInd = rand() % (swapLength + 1);
-								while (swapEnergy[swapInd] > targetBest + 5) swapInd = rand() % (swapLength + 1);
+								while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
+								//swapInd = swapLength;
 								fprintf(stderr, "swap out good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-								copybetween(chain, swapChains[swapLength]);
+								copybetween(chain, swapChains[swapInd]);
 								//sim_params->protein_model.external_k[0] = external_k;
 							}
 						}
@@ -389,9 +392,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					if (currTargetEnergy -targetBest > 10.0 && rand() % 100 < 10) {
 						if (1 || external_k == sim_params->protein_model.external_k[0]) {
 							swapInd = rand() % (swapLength + 1);
-							while (swapEnergy[swapInd] > targetBest + 5) swapInd = rand() % (swapLength + 1);
+							while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
+							//swapInd = swapLength;
 							fprintf(stderr, "swap out bad curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-							copybetween(chain, swapChains[swapLength]);
+							copybetween(chain, swapChains[swapInd]);
 							//sim_params->protein_model.external_k[0] = external_k;
 						}
 
