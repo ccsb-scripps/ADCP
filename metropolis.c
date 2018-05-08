@@ -67,9 +67,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 	/*Also take into account the global_energy term */
 
-        /*special cyclic*/
+        /*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
 	if (sim_params->protein_model.external_potential_type2 == 4) {
-		loss -= (chain->Erg(1, (chain->NAA) - 1) - q);
+		loss += (chain->Erg(1, (chain->NAA) - 1) - q);
 	}
 
 	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
@@ -78,9 +78,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double externalloss = (chain->Erg(0, 0) - q);
 	double internalloss = loss;
 	double external_k = 1.0;
-	if (sim_params->protein_model.external_potential_type == 5)	sim_params->protein_model.external_k[0];
+	if (sim_params->protein_model.external_potential_type == 5)	external_k = sim_params->protein_model.external_k[0];
 	if (q > 0) external_k = 0.02;
-	//loss is negative!!
+	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
 	//loss += q - chain->Erg(0, 0);
 	//loss = loss/sqrt(chain->NAA) + externalloss;
@@ -215,14 +215,18 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
 
 
+	//if loss is negative, it's worse, bad
+	double externalloss = chain->Erg(0, 0) - transExtEne;
 
 
 
 	//if (moved && allowed(chain, chaint, biasmap, 1, chain->NAA - 1, logLstar, currE, sim_params)) {
-	if (transExtEne < chain->Erg(0, 0) || exp(sim_params->thermobeta * (transExtEne - chain->Erg(0, 0))) * RAND_MAX < sim_params->protein_model.external_k[0] * rand()) {
-			//fprintf(stderr,"committing amino acid xaa %d - %d\n",start-1,end);
+	if (externalloss < 0.0 && exp(sim_params->thermobeta * externalloss) * RAND_MAX < sim_params->protein_model.external_k[0] * rand()) {
+		return 0;
+	}
+	else {
 		casttriplet(chain->xaa[0], chaint->xaat[0]);
-		
+
 		for (int i = 1; i <= chain->NAA - 1; i++) {
 			casttriplet(chain->xaa[i], chaint->xaat[i]);
 		}
@@ -237,7 +241,8 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		//copybetween(chain, chaint);
 		return 1;
 	}
-	return 0;
+
+	
 
 }
 

@@ -327,7 +327,11 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					lastIndex = i*sim_params->pace + j;
                     if (sim_params->protein_model.external_k[0] < external_k){
 						sim_params->protein_model.external_k[0] = 1.02*sim_params->protein_model.external_k[0];
-                    } else sim_params->protein_model.external_k[0] = external_k;
+					}
+					else if (sim_params->protein_model.external_k[0] > external_k) {
+						fprintf(stderr, "annealing complete \n");
+						sim_params->protein_model.external_k[0] = external_k;
+					}
 					pdbCount++;
 					copybetween(lastChain, chain);
 					lastTargetEnergy = currTargetEnergy;
@@ -377,7 +381,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 							//bestIndex = i*sim_params->pace + j;
 						}
 						else if (rand() % 100 < 1) {
-							if (1 || external_k == sim_params->protein_model.external_k[0]) {
+							if (external_k == sim_params->protein_model.external_k[0]) {
 
 								swapInd = rand() % (swapLength + 1);
 								while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
@@ -389,12 +393,12 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						}
 					}
 
-					if (currTargetEnergy -targetBest > 10.0 && rand() % 100 < 10) {
-						if (1 || external_k == sim_params->protein_model.external_k[0]) {
+					if (currTargetEnergy -targetBest > 10.0 && rand() % 100 < 5) {
+						if (external_k == sim_params->protein_model.external_k[0]) {
 							swapInd = rand() % (swapLength + 1);
 							while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
 							//swapInd = swapLength;
-							fprintf(stderr, "swap out bad curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
+							fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
 							copybetween(chain, swapChains[swapInd]);
 							//sim_params->protein_model.external_k[0] = external_k;
 						}
