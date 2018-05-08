@@ -78,7 +78,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double externalloss = (chain->Erg(0, 0) - q);
 	double internalloss = loss;
 	double external_k = 1.0;
-	if (sim_params->protein_model.external_potential_type == 5)	sim_params->protein_model.external_k[0];
+	if (sim_params->protein_model.external_potential_type == 5)	external_k = sim_params->protein_model.external_k[0];
 	if (q > 0) external_k = 0.02;
 	//loss is negative!!
 	/* Metropolis criteria */
