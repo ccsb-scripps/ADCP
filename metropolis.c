@@ -85,7 +85,10 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//loss += q - chain->Erg(0, 0);
 	//loss = loss/sqrt(chain->NAA) + externalloss;
 	loss = loss + externalloss;
-
+	if (external_k == 0.5) {
+		fprintf(stderr, "heat starts \n");
+		sim_params->protein_model.external_k[0] = 0.51;
+	}
 	
 
 	

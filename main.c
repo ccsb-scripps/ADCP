@@ -181,33 +181,36 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 	Chain *chain2 = (Chain *)malloc(sizeof(Chain));
 	chain2->aa = NULL; chain2->xaa = NULL; chain2->erg = NULL; chain2->xaa_prev = NULL;
 	allocmem_chain(chain2,chain->NAA,chain->Nchains);
+
+
 	if (sim_params->protein_model.external_potential_type == 5 && sim_params->protein_model.external_r0[0] == (int)sim_params->protein_model.external_r0[0]) {
 		targetBest = 99999.;
 		double targetBestTemp = targetBest;
-        //double targetBestPrev = targetBest;
+		//double targetBestPrev = targetBest;
 		double currTargetEnergy = 99999.;
 		double lastTargetEnergy = 9999.;
+		//Index for last event
 		int lastIndex = 0;
+		//Index for temp change event
+		int resetIndex = 0;
+		//Index for best Energy found
 		int bestIndex = 0;
-		int lastBestIndex = 0;
-		int pdbCount = 0;
+
 		int stopSignal = 0;
 		int swapInd = 0;
 		int swapInd2 = 0;
 		int swapLength = 10;
 		int inCache = 0;
 		int ind = 0;
+		int currIndex = 0;
 		FILE *swapFile = NULL;
 		char swapname[12];
 		sprintf(swapname, "swap%d.pdb", swapLength);
 		double swapEnergy[swapLength + 1];
-		Chain *lastChain = (Chain *)malloc(sizeof(Chain));
-		lastChain->aa = NULL; lastChain->xaa = NULL; lastChain->erg = NULL; lastChain->xaa_prev = NULL;
-
-		allocmem_chain(lastChain, chain->NAA, chain->Nchains);
 		Chain* swapChains[swapLength];
 
-		for (int i = 0; i < swapLength+1; i++) {
+		//create swap pool, last element is with the best energy
+		for (int i = 0; i < swapLength + 1; i++) {
 			swapChains[i] = (Chain *)malloc(sizeof(Chain));
 			swapChains[i]->aa = NULL; swapChains[i]->xaa = NULL; swapChains[i]->erg = NULL; swapChains[i]->xaa_prev = NULL;
 			allocmem_chain(swapChains[i], chain->NAA, chain->Nchains);
@@ -215,13 +218,13 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			swapEnergy[i] = 9999.;
 		}
 		double external_k = sim_params->protein_model.external_k[0];
-		//fprintf(stderr, "enefffrgies C %g %g %g\n", sim_params->protein_model.external_k[0], externalBest, extenergy(chain));
+
 		fprintf(stderr, "begin run with pace %d stretch %d \n", sim_params->pace, sim_params->stretch);
-		for (i = 1; i < sim_params->stretch; i++) {
+		for (i = 1; i < sim_params->stretch * sim_params->pace; i++) {
 			if (stopSignal) break;
 			targetBestTemp = targetBest;
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
-				if ((i % 100 == 1 && i < 1000) || (i % 1000 == 1)) {
+				if ((i % 1000000 == 1 && i < 10000000) || (i % 10000000 == 1)) {
 					/* This bit ensures the amplitude of the moves
 					is independent of the chain's history*/
 					copybetween(chain2, chain);
@@ -232,197 +235,183 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				}
 			}
 			targetBest = targetBestTemp;
-			//fprintf(stderr, "energies C %g %g %g\n", sim_params->protein_model.external_k[0], externalBest, extenergy(chain));
-			for (j = 1; (j < sim_params->pace || j < 1024); j++) {
-				//targetBestPrev = targetBest;
-				move(chain, chaint, biasmap, 0, &temp, 0, sim_params);
-				inCache = 0;
-				currTargetEnergy = extenergy(chain);
-				//currTargetEnergy = totenergy(chain);
-				//currTargetEnergy = targetenergy(chain);
+			move(chain, chaint, biasmap, 0, &temp, 0, sim_params);
+			inCache = 0;
+			currTargetEnergy = extenergy(chain);
+			currIndex = i*sim_params->pace + j;
+			//currTargetEnergy = totenergy(chain);
+			//currTargetEnergy = targetenergy(chain);
+			if (currTargetEnergy == lastTargetEnergy) continue;
+			else {
+				lastTargetEnergy = currTargetEnergy;
+				if (sim_params->protein_model.external_k[0] < external_k && currIndex % 100000 == 0) {
+					sim_params->protein_model.external_k[0] = 1.02*sim_params->protein_model.external_k[0];
+				}
+				else if (sim_params->protein_model.external_k[0] > external_k) {
+					fprintf(stderr, "annealing complete \n");
+					sim_params->protein_model.external_k[0] = external_k;
+				}
+			}
+			if (currTargetEnergy - targetBest < -0.1) {
+				//write out best solutions;
+				fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+				tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 
-				if (currTargetEnergy - targetBest < -0.1) {
-					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					lastIndex = i*sim_params->pace + j;
+				//reset temp;
+				if (sim_params->protein_model.external_k[0] != external_k) {
+					fprintf(stderr, "best energy reset temp%g %g %g \n", swapEnergy[0], swapEnergy[swapLength], currTargetEnergy);
+					sim_params->protein_model.external_k[0] = external_k;
+				}
 
-					pdbCount++;
-					copybetween(lastChain, chain);
-					lastTargetEnergy = currTargetEnergy;
-					targetBest = currTargetEnergy;
-					if (sim_params->protein_model.external_k[0] != external_k) {
-						fprintf(stderr, "best energy reset temp%g %g %g \n", swapEnergy[0], swapEnergy[swapLength], currTargetEnergy);
-						sim_params->protein_model.external_k[0] = external_k;
-					}
-					bestIndex = i*sim_params->pace + j;
-					lastBestIndex = i*sim_params->pace + j;
-					if (rand() % 100 < 50) {
-						for (ind = 0; ind < swapLength; ++ind) {
-							if (swapEnergy[ind] == 9999.) swapInd = ind;
-							if (calculateRMSD(swapChains[ind], chain) < 2.0) {
-								inCache = 1;
-								//fprintf(stderr, "inCache");
-								if (currTargetEnergy < swapEnergy[ind] - 2 ) {
-                                    //fprintf(stderr, "inCache %d \n",ind);
-									fprintf(stderr, "swap between best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
-									copybetween(swapChains[ind], chain);
-									swapEnergy[ind] = currTargetEnergy;
-									sprintf(swapname, "swap%d.pdb", ind);
-									swapFile = fopen(swapname, "w+");
-									pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
-								}
-								break;
+				//record energy and reset indices;
+				targetBest = currTargetEnergy;
+				resetIndex = currIndex;
+				bestIndex = currIndex;
+				lastIndex = currIndex;
+
+				//write to swap pool
+				if (rand() % 100 < 50) {
+					for (ind = 0; ind < swapLength; ++ind) {
+						if (swapEnergy[ind] == 9999.) swapInd = ind;
+						if (calculateRMSD(swapChains[ind], chain) < 2.0) {
+							inCache = 1;
+							//fprintf(stderr, "inCache");
+							if (currTargetEnergy < swapEnergy[ind] - 0.1) {
+								//fprintf(stderr, "inCache %d \n",ind);
+								fprintf(stderr, "swap between best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
+								copybetween(swapChains[ind], chain);
+								swapEnergy[ind] = currTargetEnergy;
+								sprintf(swapname, "swap%d.pdb", ind);
+								swapFile = fopen(swapname, "w+");
+								pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 							}
+							break;
 						}
-						//fprintf(stderr, "swapped");
-						if (!inCache) {
-							if (swapEnergy[swapInd] != 9999.) {
-								swapInd = rand() % swapLength;
-								swapInd2 = rand() % swapLength;
-								swapInd = swapEnergy[swapInd] > swapEnergy[swapInd2] ? swapInd : swapInd2;
-							}
-							fprintf(stderr, "swap in best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-							sprintf(swapname,"swap%d.pdb", swapInd);
-							
+					}
+					if (!inCache) {
+						if (swapEnergy[swapInd] != 9999.) {
+							swapInd = rand() % swapLength;
+							swapInd2 = rand() % swapLength;
+							swapInd = swapEnergy[swapInd] > swapEnergy[swapInd2] ? swapInd : swapInd2;
+						}
+						fprintf(stderr, "swap in best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
+						sprintf(swapname, "swap%d.pdb", swapInd);
+
+						swapFile = fopen(swapname, "w+");
+						pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
+						//fclose(swapname);
+						//copybetween(chain, swapChains[swapInd]);
+						copybetween(swapChains[swapInd], chain);
+						swapEnergy[swapInd] = currTargetEnergy;
+					}
+				}
+
+				//write to last element of swap pool;
+				copybetween(swapChains[swapLength], chain);
+				swapEnergy[swapLength] = currTargetEnergy;
+				sprintf(swapname, "swap%d.pdb", swapLength);
+				swapFile = fopen(swapname, "w+");
+				pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
+				//fclose(swapname);
+				//if (rand() * 8 < RAND_MAX) copybetween(bestChain, chain);
+				//copybetween(bestChain, chain);
+				//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), "Gary_Hack.pdb", totenergy(chain));
+			}
+			else if ((currIndex - bestIndex) > 10000000) {
+				fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i*sim_params->pace + j, bestIndex);
+				stopSignal = 1;
+				break;
+			}
+			else if ((currIndex - resetIndex) > 1000000 && sim_params->protein_model.external_k[0] == external_k) {
+				sim_params->protein_model.external_k[0] = external_k * 0.5;
+				fprintf(stderr, "No improvement after 1000000, Heat up system\n");
+				swapInd = rand() % (swapLength + 1);
+				while (swapEnergy[swapInd] > targetBest + 3) swapInd = rand() % (swapLength + 1);
+				//fprintf(stderr, "swap in best %d \n", swapInd);
+				//swapInd = swapLength;
+				copybetween(chain, swapChains[swapInd]);
+				resetIndex = currIndex;
+				lastIndex = currIndex;
+				fprintf(stderr, "swap out no improv curr %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapInd], targetBest);
+			}
+			else if (currTargetEnergy - targetBest <= 10.0) {
+
+				for (ind = 0; ind < swapLength; ++ind) {
+					if (swapEnergy[ind] == 9999.) swapInd = ind;
+					if (calculateRMSD(swapChains[ind], chain) < 2.0) {
+						inCache = 1;
+						if (currTargetEnergy < swapEnergy[ind] - 0.1) {
+							copybetween(swapChains[ind], chain);
+							fprintf(stderr, "swap between good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
+							swapEnergy[ind] = currTargetEnergy;
+							fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+							tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+							sprintf(swapname, "swap%d.pdb", ind);
 							swapFile = fopen(swapname, "w+");
 							pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
-							//fclose(swapname);
-							//copybetween(chain, swapChains[swapInd]);
-							copybetween(swapChains[swapInd], chain);
-							swapEnergy[swapInd] = currTargetEnergy;
+							//bestIndex = i*sim_params->pace + j;
+							//sim_params->protein_model.external_k[0] = external_k;
+							lastIndex = currIndex;
 						}
+						//fprintf(stderr, "inCache2");
+						break;
 					}
-					copybetween(swapChains[swapLength], chain);
-					swapEnergy[swapLength] = currTargetEnergy;
-					sprintf(swapname, "swap%d.pdb", swapLength);
+				}
+				//fprintf(stderr, "swapped2");
+				if (!inCache) {
+					if (swapEnergy[swapInd] != 9999.) {
+						swapInd = rand() % swapLength;
+						swapInd2 = rand() % swapLength;
+						swapInd = swapEnergy[swapInd] > swapEnergy[swapInd2] ? swapInd : swapInd2;
+					}
+					//copybetween(chain, swapChains[swapInd]);
+					fprintf(stderr, "swap in good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
+					sprintf(swapname, "swap%d.pdb", swapInd);
 					swapFile = fopen(swapname, "w+");
 					pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 					//fclose(swapname);
-					//if (rand() * 8 < RAND_MAX) copybetween(bestChain, chain);
-					//copybetween(bestChain, chain);
-					//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), "Gary_Hack.pdb", totenergy(chain));
+					copybetween(swapChains[swapInd], chain);
+					swapEnergy[swapInd] = currTargetEnergy;
+					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+					lastIndex = currIndex;
+					//sim_params->protein_model.external_k[0] = external_k;
+					//bestIndex = i*sim_params->pace + j;
 				}
-				//(targetBest > 20 || currTargetEnergy - targetBest < 3.0) &&
-				else if ((i*sim_params->pace + j - lastBestIndex) > 10000000) {
-					fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i*sim_params->pace + j, bestIndex);
-					stopSignal = 1;
-					break;
+				else if (currIndex - lastIndex > 200000 && rand() % 100 < 1) {
+					if (external_k == sim_params->protein_model.external_k[0]) {
+
+						swapInd = rand() % (swapLength + 1);
+						while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
+						//swapInd = swapLength;
+						fprintf(stderr, "swap out good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
+						copybetween(chain, swapChains[swapInd]);
+						lastIndex = currIndex;
+						//sim_params->protein_model.external_k[0] = external_k;
+					}
 				}
-				else if ((i*sim_params->pace + j - bestIndex) > 1000000 && sim_params->protein_model.external_k[0] == external_k) {
-					sim_params->protein_model.external_k[0] = external_k * 0.5;
-					fprintf(stderr, "No improvement after 1000000, Heat up system\n");
+			}
+			else if (currIndex - lastIndex > 200000 && rand() % 100 < 5) {
+				if (external_k == sim_params->protein_model.external_k[0]) {
 					swapInd = rand() % (swapLength + 1);
 					while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
-                    //fprintf(stderr, "swap in best %d \n", swapInd);
 					//swapInd = swapLength;
+					fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
 					copybetween(chain, swapChains[swapInd]);
-					bestIndex = i*sim_params->pace + j;
-					
-					fprintf(stderr, "swap out no improv curr %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-				}
-				else if (currTargetEnergy != lastTargetEnergy && (i*sim_params->pace + j - lastIndex) > sim_params->pace) {
-					//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-					//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					//fprintf(stderr, "currEnergy %g best %g \n", currTargetEnergy, targetBest);
-					lastIndex = i*sim_params->pace + j;
-                    if (sim_params->protein_model.external_k[0] < external_k){
-						sim_params->protein_model.external_k[0] = 1.02*sim_params->protein_model.external_k[0];
-					}
-					else if (sim_params->protein_model.external_k[0] > external_k) {
-						fprintf(stderr, "annealing complete \n");
-						sim_params->protein_model.external_k[0] = external_k;
-					}
-					pdbCount++;
-					copybetween(lastChain, chain);
-					lastTargetEnergy = currTargetEnergy;
-					//if (rand() * 32 < RAND_MAX) copybetween(bestChain, chain);
-
-					if (currTargetEnergy - targetBest <= 5.0) {
-						for (ind = 0; ind < swapLength; ++ind) {
-							if (swapEnergy[ind] == 9999.) swapInd = ind;
-							if (calculateRMSD(swapChains[ind], chain) < 2.0) {
-								inCache = 1;
-
-								if (currTargetEnergy < swapEnergy[ind] - 2 ) {
-									copybetween(swapChains[ind], chain);
-									fprintf(stderr, "swap between good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
-									swapEnergy[ind] = currTargetEnergy;
-									fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-									tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-									sprintf(swapname, "swap%d.pdb", ind);
-									swapFile = fopen(swapname, "w+");
-									pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
-									//bestIndex = i*sim_params->pace + j;
-									//sim_params->protein_model.external_k[0] = external_k;
-								}
-								//fprintf(stderr, "inCache2");
-								break;
-							}
-						}
-						//fprintf(stderr, "swapped2");
-						if (!inCache) {
-							if (swapEnergy[swapInd] != 9999.) {
-								swapInd = rand() % swapLength;
-								swapInd2 = rand() % swapLength;
-								swapInd = swapEnergy[swapInd] > swapEnergy[swapInd2] ? swapInd : swapInd2;
-							}
-							//copybetween(chain, swapChains[swapInd]);
-							fprintf(stderr, "swap in good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-							sprintf(swapname, "swap%d.pdb", swapInd);
-							swapFile = fopen(swapname, "w+");
-							pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
-							//fclose(swapname);
-							copybetween(swapChains[swapInd], chain);
-							swapEnergy[swapInd] = currTargetEnergy;
-							fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-							tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-							
-							//sim_params->protein_model.external_k[0] = external_k;
-							//bestIndex = i*sim_params->pace + j;
-						}
-						else if (rand() % 100 < 1) {
-							if (external_k == sim_params->protein_model.external_k[0]) {
-
-								swapInd = rand() % (swapLength + 1);
-								while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
-								//swapInd = swapLength;
-								fprintf(stderr, "swap out good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-								copybetween(chain, swapChains[swapInd]);
-								//sim_params->protein_model.external_k[0] = external_k;
-							}
-						}
-					}
-
-					if (currTargetEnergy -targetBest > 10.0 && rand() % 100 < 5) {
-						if (external_k == sim_params->protein_model.external_k[0]) {
-							swapInd = rand() % (swapLength + 1);
-							while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
-							//swapInd = swapLength;
-							fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
-							copybetween(chain, swapChains[swapInd]);
-							//sim_params->protein_model.external_k[0] = external_k;
-						}
-
-					}
-
+					lastIndex = currIndex;
+					//sim_params->protein_model.external_k[0] = external_k;
 				}
 
 			}
-			/* annealing or tempering swap */
-			if (--k == 0) {
-				thermoswap(chain, sim_params);
-				k = sim_params->intrvl;
-				//fprintf(stderr, "swap in best %d \n", swapInd);
-			}
-
 		}
 		//clean up
-		freemem_chain(lastChain); free(lastChain);
-		for (int i = 0; i < swapLength+1; i++) {
+		for (int i = 0; i < swapLength + 1; i++) {
 			freemem_chain(swapChains[i]); free(swapChains[i]);
 		}
 
 	}
+
+
 	//temperature swaps
 	else if (sim_params->protein_model.external_potential_type == 5 && sim_params->protein_model.external_r0[0] - (int)sim_params->protein_model.external_r0[0] < 0.2) {
 		targetBest = 99999.;
