@@ -238,13 +238,13 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			move(chain, chaint, biasmap, 0, &temp, 0, sim_params);
 			inCache = 0;
 			currTargetEnergy = extenergy(chain);
-			currIndex = i*sim_params->pace + j;
+			currIndex = i;
 			//currTargetEnergy = totenergy(chain);
 			//currTargetEnergy = targetenergy(chain);
 			if (currTargetEnergy == lastTargetEnergy) continue;
 			else {
 				lastTargetEnergy = currTargetEnergy;
-				if (sim_params->protein_model.external_k[0] < external_k && currIndex % 100000 == 0) {
+				if (sim_params->protein_model.external_k[0] < external_k && currIndex % 10000 == 0) {
 					sim_params->protein_model.external_k[0] = 1.02*sim_params->protein_model.external_k[0];
 				}
 				else if (sim_params->protein_model.external_k[0] > external_k) {
@@ -276,9 +276,9 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						if (calculateRMSD(swapChains[ind], chain) < 2.0) {
 							inCache = 1;
 							//fprintf(stderr, "inCache");
-							if (currTargetEnergy < swapEnergy[ind] - 0.1) {
+							if (currTargetEnergy < swapEnergy[ind] - 1) {
 								//fprintf(stderr, "inCache %d \n",ind);
-								fprintf(stderr, "swap between best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
+								//fprintf(stderr, "swap between best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
 								copybetween(swapChains[ind], chain);
 								swapEnergy[ind] = currTargetEnergy;
 								sprintf(swapname, "swap%d.pdb", ind);
@@ -318,7 +318,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), "Gary_Hack.pdb", totenergy(chain));
 			}
 			else if ((currIndex - bestIndex) > 10000000) {
-				fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i*sim_params->pace + j, bestIndex);
+				fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i, bestIndex);
 				stopSignal = 1;
 				break;
 			}
@@ -340,12 +340,12 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
 					if (calculateRMSD(swapChains[ind], chain) < 2.0) {
 						inCache = 1;
-						if (currTargetEnergy < swapEnergy[ind] - 0.1) {
+						if (currTargetEnergy < swapEnergy[ind] - 1) {
 							copybetween(swapChains[ind], chain);
-							fprintf(stderr, "swap between good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
+							//fprintf(stderr, "swap between good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
 							swapEnergy[ind] = currTargetEnergy;
-							fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-							tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+							//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+							//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 							sprintf(swapname, "swap%d.pdb", ind);
 							swapFile = fopen(swapname, "w+");
 							pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
@@ -372,13 +372,13 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//fclose(swapname);
 					copybetween(swapChains[swapInd], chain);
 					swapEnergy[swapInd] = currTargetEnergy;
-					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+					//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+					//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 					lastIndex = currIndex;
 					//sim_params->protein_model.external_k[0] = external_k;
 					//bestIndex = i*sim_params->pace + j;
 				}
-				else if (currIndex - lastIndex > 200000 && rand() % 100 < 1) {
+				else if (currIndex - lastIndex > 200000 && rand() % 1000000 < 1) {
 					if (external_k == sim_params->protein_model.external_k[0]) {
 
 						swapInd = rand() % (swapLength + 1);
