@@ -179,7 +179,15 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 
 		//movement = 4 * (movement - 0.5);
 		if (chain->Erg(0, 0) > 0) {
-			movement = transvec[i] / abs(vecind2 - vecind1);
+			if (sim_params->seq != NULL) {
+				if (length > 0.5) {
+					movement = 4 * (length - 0.75);
+				}
+				else movement = transvec[i];
+			}
+			else {
+				movement = transvec[i] / abs(vecind2 - vecind1);
+			}			
 		}
 		else {
 			//movement = 0.2 *(rand()/RAND_MAX) - 0.1;
