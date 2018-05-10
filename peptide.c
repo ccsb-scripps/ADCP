@@ -883,15 +883,16 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	triplet helix, strand;
 
 	matrix t = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	matrix t1 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	int randx = 0, randy = 0, randz = 0;
-	// if external AD grid choose the 8 corners of the box as starting position
+	//matrix t1 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
+	//int randx = 0, randy = 0, randz = 0;
+	//if external AD grid choose the 8 corners of the box as starting position
 	if ((sim_params->protein_model).external_potential_type == 5) {
 		//fprintf(stderr, "random number %g %g %g \n", (double)rand(), RAND_MAX, sim_params->seed);
 		randx = (round((double)rand() / RAND_MAX) * 2 - 1);
 		randy = (round((double)rand() / RAND_MAX) * 2 - 1);
 		randz = (round((double)rand() / RAND_MAX) * 2 - 1);
-		matrix t1 = { { randx, 0., 0. },{0., randy, 0. },{ 0., 0., randz }};
+
+		//matrix t = { { randx, 0., 0. },{0., randy, 0. },{ 0., 0., randz }};
 	}
 
 
@@ -960,8 +961,8 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	/* right-twisted beta-strand with phi = -123 and psi = 135 */
 	eulerset(strand, -1.7, 1.0, -1.2);
 
-	transset(chain->xaa[0], t1);
-	transset(chain->xaa_prev[1], t1);
+	transset(chain->xaa[0], t);
+	transset(chain->xaa_prev[1], t);
 
 
 	for (i = 1; i < chain->NAA; i++) {
@@ -980,7 +981,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 		}
 
 		transset(t, chain->xaa[i]);
-
+		fixtriplet(t);
 		/* fix accumulating errors every 64 residues */
 		if ((i & 0x3F) == 0)
 			fixtriplet(t);
@@ -1008,20 +1009,20 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	//	fprintf(stderr,"\n");
 	//}
 	//fprintf(stderr,"END XAA_PREV\n");
-
+	chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;
 	
 	if ((sim_params->protein_model).external_potential_type == 5) {
-		srand(sim_params->seed);
-
+		//srand(sim_params->seed);
+	
 		chain->aa[0].ca[0] = centerX - randx * (NX - 1) * spacing / 4;
 		chain->aa[0].ca[1] = centerY - randy * (NY - 1) * spacing / 4;
 		chain->aa[0].ca[2] = centerZ - randz * (NZ - 1) * spacing / 4;
 		//fprintf(stderr, "random number %g %g %g \n", (double)rand(), RAND_MAX, sim_params->seed);
-
+		//chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;
 	}
 	else {
 		chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;	/* arbitrary */
-
+	
 	}
 
 
