@@ -379,7 +379,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//bestIndex = i*sim_params->pace + j;
 				}
 				else if (currIndex - lastIndex > 200000 && rand() % 1000000 < 1) {
-					if (external_k == sim_params->protein_model.external_k[0]) {
+					if (1 || external_k == sim_params->protein_model.external_k[0]) {
 
 						swapInd = rand() % (swapLength + 1);
 						while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
@@ -392,7 +392,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				}
 			}
 			else if (currIndex - lastIndex > 200000 && rand() % 100 < 5) {
-				if (external_k == sim_params->protein_model.external_k[0]) {
+				if (1 || external_k == sim_params->protein_model.external_k[0]) {
 					swapInd = rand() % (swapLength + 1);
 					while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
 					//swapInd = swapLength;
@@ -713,7 +713,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			if (sim_params->thermobeta != sim_params->beta1)
 				continue;
 #endif
-
+			fprintf(stderr, "curr cyclic energy  %g \n", extenergy(chain));
 			fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 			tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 		}

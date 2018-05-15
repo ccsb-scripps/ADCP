@@ -68,9 +68,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	/*Also take into account the global_energy term */
 
         /*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
-	if (sim_params->protein_model.external_potential_type2 == 4) {
-		loss += (chain->Erg(1, (chain->NAA) - 1) - q);
-	}
+	//if (sim_params->protein_model.external_potential_type2 == 4) {
+	//	loss += (chain->Erg(1, (chain->NAA) - 1) - q);
+	//}
 
 	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
 	//loss += (chain->Erg(0, 0) - q);
@@ -192,7 +192,7 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		else {
 			if (length < 0.2) {
 				//movement = 5 * (length - 0.1);
-                                movement = 0.6 * rand()/RAND_MAX - 0.3;
+				movement = 0.6 * rand() / RAND_MAX - 0.3;
 			}
 			else movement = transvec[i] / abs(vecind2 - vecind1);
 			//movement = 0.2 *(rand()/RAND_MAX) - 0.1;
@@ -449,6 +449,8 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	int N_len = sim_params->MC_lookup_table_n[len]; //the number of valid moves (taking into account fixed amino acids)
 	//fprintf(stderr," random number in [ 0, %d ],",N_len-1);
 
+
+
 	/* segment start */
 	start = sim_params->MC_lookup_table[len*N + (toss >> 2) % N_len ];
 	/* segment end */
@@ -468,6 +470,21 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 			stop("crankshaft: tried to move fixed amino acid.\n");
 		}
 	}
+
+	//for cyclic peptide Gary Hack
+	while (sim_params->protein_model.external_potential_type2 == 4 && (start <= 1 || end >= sim_params->NAA-1) && ((toss >>2 )%1000) > chain->Erg(0, 0)) {
+		toss = rand();
+		start = sim_params->MC_lookup_table[len*N + (toss >> 2) % N_len];
+		if ((sim_params->protein_model).fix_CA_atoms) {
+			end = start + 1;
+		}
+		else {
+			end = start + len + 1;
+		}
+
+		//fprintf(stderr, "c %g \n", chain->Erg(0, 0));
+	}
+
 	/* pivot or crankshaft */
 	if (start == 0) {
 		pivot_around_end = 1;

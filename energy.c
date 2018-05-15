@@ -2096,15 +2096,21 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
 	//fprintf(stderr, "look at me1\n");
 	ans += external2(((chain->aa) + i), mod_params, mol_com);
   }
+
   // Gary Hack cyclic peptides
   if (mod_params->external_potential_type2 == 4) {
 	  double CaDistance = 0.0;
+	  double NCDistance = 0.0;
 	  if (start == 0 && end == 0) {
+		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
 		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
 	  } else {
-		  CaDistance = distance(((chaint->aat) + 1)->ca, ((chaint->aat) + chain->NAA - 1)->ca);
+		  NCDistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->c);
+		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
 	  }
-	  ans += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+	  if (CaDistance > 5) ans += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+	  if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 370 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345)/ 0.59219;
+	  
 
   }
 
