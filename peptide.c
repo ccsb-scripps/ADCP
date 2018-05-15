@@ -884,7 +884,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 
 	matrix t = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
 	//matrix t1 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//int randx = 0, randy = 0, randz = 0;
+	int randx = 0, randy = 0, randz = 0;
 	//if external AD grid choose the 8 corners of the box as starting position
 	if ((sim_params->protein_model).external_potential_type == 5) {
 		//fprintf(stderr, "random number %g %g %g \n", (double)rand(), RAND_MAX, sim_params->seed);
