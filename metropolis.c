@@ -190,9 +190,14 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 			}			
 		}
 		else {
+			if (length < 0.2) {
+				//movement = 5 * (length - 0.1);
+                                movement = 0.6 * rand()/RAND_MAX - 0.3;
+			}
+			else movement = transvec[i] / abs(vecind2 - vecind1);
 			//movement = 0.2 *(rand()/RAND_MAX) - 0.1;
 			//return 0;
-			movement = transvec[i] * 2 * (length -0.5);
+			//movement = transvec[i] * (length -0.5);
 		}
 		
 		//
