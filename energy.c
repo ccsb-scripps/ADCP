@@ -165,7 +165,8 @@ double targetenergy(Chain *chain)
 {
 	int i, j;
 	//double sqrtNAA = sqrt(chain->NAA);
-	double sqrtNAA = chain->NAA;
+	//double sqrtNAA = chain->NAA;
+	double sqrtNAA = 4.;
 	double toten = sqrtNAA * chain->Erg(0, 0);
 
 	//fprintf(stderr, "tote... %g\n", chain->Erg(0,0));
@@ -343,9 +344,9 @@ double lowerGridEnergy(double E) {
 	//	//return log10f(E) + 9;
 	//	return log(E) + 1.71828;
 	//}
-	if (E > 1) {
+	if (E > 5) {
 		//return log10f(E) + 9;
-		return log(E) + 1;
+		return log(E) + 5;
 	}
 	return E;
 }
@@ -2101,16 +2102,23 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
   if (mod_params->external_potential_type2 == 4) {
 	  double CaDistance = 0.0;
 	  double NCDistance = 0.0;
+	  // for first evaluation
 	  if (start == 0 && end == 0) {
 		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
 		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
-	  } else {
-		  NCDistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->c);
-		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
 	  }
-	  if (CaDistance > 5) ans += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+	  // if motion does not change the C-N bond, use starting conformation
+	  else if (start > 1 && end < chain->NAA - 1) {
+		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
+		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
+	  } 
+	  // if motion moves the C-N bond, use conformation after the motion
+	  else {
+		  NCDistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->c);
+		  CaDistance = distance(((chaint->aat) + 1)->ca, ((chaint->aat) + chain->NAA - 1)->ca);
+	  }
+	  if (1 || CaDistance > 5) ans += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
 	  if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 370 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345)/ 0.59219;
-	  
 
   }
 
