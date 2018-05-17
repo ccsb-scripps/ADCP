@@ -335,7 +335,6 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				fprintf(stderr, "swap out no improv curr %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 			}
 			else if (currTargetEnergy - targetBest <= 5.0) {
-
 				for (ind = 0; ind < swapLength; ++ind) {
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
 					if (calculateRMSD(swapChains[ind], chain) < 2.0) {
@@ -378,7 +377,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//sim_params->protein_model.external_k[0] = external_k;
 					//bestIndex = i*sim_params->pace + j;
 				}
-				else if (currIndex - lastIndex > 200000 && rand() % 1000000 < 1) {
+				else if (currIndex - lastIndex > 200000 && rand() % 100 < 5) {
 					if (1 || external_k == sim_params->protein_model.external_k[0]) {
 
 						swapInd = rand() % (swapLength + 1);
@@ -390,6 +389,9 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//sim_params->protein_model.external_k[0] = external_k;
 					}
 				}
+				lastIndex = currIndex;
+
+
 			}
 			else if (currIndex - lastIndex > 200000 && rand() % 100 < 5) {
 				if (1 || external_k == sim_params->protein_model.external_k[0]) {
@@ -713,14 +715,14 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			if (sim_params->thermobeta != sim_params->beta1)
 				continue;
 #endif
-			fprintf(stderr, "curr cyclic energy  %g \n", extenergy(chain));
+			if (sim_params->protein_model.external_potential_type2 == 4) fprintf(stderr, "curr cyclic energy  %g \n", extenergy(chain));
 			fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 			tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 		}
 	}
 
 	freemem_chain(chain2); free(chain2);
-
+	energy_matrix_print(chain, biasmap, sim_params);
 }
 
 char *read_options(int argc, char *argv[], simulation_params *sim_params)

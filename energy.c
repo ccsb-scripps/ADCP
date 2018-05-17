@@ -181,6 +181,13 @@ double targetenergy(Chain *chain)
 	//return chain->Erg(0, 0);
 }
 
+double cyclicenergy(Chain *chain)
+{
+
+	return chain->Erg(1, chain->NAA - 1);
+	//return chain->Erg(0, 0);
+}
+
 
 /* Print the energy matrix of a chain */
 void energy_matrix_print(Chain *chain, Biasmap *biasmap, model_params *mod_params) {

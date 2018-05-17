@@ -20,6 +20,7 @@ double totenergy(Chain *chain);
 double locenergy(Chain *chain);
 double extenergy(Chain *chain);
 double targetenergy(Chain *chain);
+double cyclicenergy(Chain *chain);
 int bestRot(Chain *chain);
 void energy_matrix_print(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_initialise(Chain *,Biasmap *, model_params *mod_params);
