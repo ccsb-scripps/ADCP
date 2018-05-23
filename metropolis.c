@@ -68,9 +68,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	/*Also take into account the global_energy term */
 
         /*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
-	//if (sim_params->protein_model.external_potential_type2 == 4) {
-	//	loss += (chain->Erg(1, (chain->NAA) - 1) - q);
-	//}
+	if (sim_params->protein_model.external_potential_type2 == 4) {
+		loss -= (chain->Erg(1, (chain->NAA) - 1) - chaint->Ergt(1, (chain->NAA) - 1));
+	}
 
 	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
 	//loss += (chain->Erg(0, 0) - q);
@@ -78,7 +78,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double externalloss = (chain->Erg(0, 0) - q);
 	double internalloss = loss;
 	double external_k = 1.0;
-	if (sim_params->protein_model.external_potential_type == 5)	external_k = sim_params->protein_model.external_k[0];
+	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
 	if (q > 5) external_k = 0.02;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
@@ -468,7 +468,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	}
 
 	//for cyclic peptide Gary Hack
-	while (sim_params->protein_model.external_potential_type2 == 4 && (start <= 1 || end >= sim_params->NAA-1) && ((toss >>2 )%10) > chain->Erg(0, 0)) {
+	while (sim_params->protein_model.external_potential_type2 == 4 && (start == 0 || end == sim_params->NAA) && ((toss >>2 )%100) > chain->Erg(0, 0)) {
 		toss = rand();
 		len = toss & 0x3;	/* segment length minus one */
 		if (len > chain->NAA - 2)
@@ -691,7 +691,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
     // used to be 1024!! gary hack
 	if (sim_params->accept_counter + sim_params->reject_counter + transaccept == 100000) {
 		sim_params->acceptance = sim_params->accept_counter / 100000.;
-		fprintf(stderr, "acceptance %g! %d\n", sim_params->acceptance, transaccept);
+		if (sim_params->acceptance<0.01) fprintf(stderr, "low acceptance %g! %d\n", sim_params->acceptance, transaccept);
 		if(changeamp){
 		  if (sim_params->acceptance_rate_tolerance <= 0) stop("The acceptance rate tolerance must be positive.");
 		  if (sim_params->acceptance_rate_tolerance >= 1) stop("The acceptance rate tolerance must be smaller than 1.");

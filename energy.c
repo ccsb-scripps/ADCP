@@ -161,12 +161,14 @@ double extenergy(Chain *chain)
 	return chain->Erg(0, 0);
 }
 
+
+
 double targetenergy(Chain *chain)
 {
 	int i, j;
 	//double sqrtNAA = sqrt(chain->NAA);
 	//double sqrtNAA = chain->NAA;
-	double sqrtNAA = 4.;
+	double sqrtNAA = 2.;
 	double toten = sqrtNAA * chain->Erg(0, 0);
 
 	//fprintf(stderr, "tote... %g\n", chain->Erg(0,0));
@@ -2109,28 +2111,39 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
   if (mod_params->external_potential_type2 == 4) {
 	  double CaDistance = 0.0;
 	  double NCDistance = 0.0;
-          double OHDistance = 0.0;
+      double HODistance = 0.0;
+	  double NODistance = 0.0;
+	  double HCDistance = 0.0;
 	  // for first evaluation
 	  if (start == 0 && end == 0) {
 		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
 		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
-                  OHDistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->o);
+          HODistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->o);
+		  NODistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->o);
+		  HCDistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->c);
 	  }
 	  // if motion does not change the C-N bond, use starting conformation
 	  else if (start > 1 && end < chain->NAA - 1) {
 		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
 		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
-                  OHDistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->o);
+          HODistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->o);
+		  NODistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->o);
+		  HCDistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->c);
 	  } 
 	  // if motion moves the C-N bond, use conformation after the motion
 	  else {
 		  NCDistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->c);
 		  CaDistance = distance(((chaint->aat) + 1)->ca, ((chaint->aat) + chain->NAA - 1)->ca);
-                  OHDistance = distance(((chaint->aat) + 1)->h, ((chaint->aat) + chain->NAA - 1)->o);
+          HODistance = distance(((chaint->aat) + 1)->h, ((chaint->aat) + chain->NAA - 1)->o);
+		  NODistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->o);
+		  HCDistance = distance(((chaint->aat) + 1)->h, ((chaint->aat) + chain->NAA - 1)->c);
+
 	  }
-	  if (1 || CaDistance > 5) ans += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-	  if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 37 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345)/ 0.59219;
-          if (1 || OHDistance > 3.5 || OHDistance < 1.2) ans += 5 * (sqrt(CaDistance) - 3.13)*(sqrt(CaDistance) - 3.13);
+	  if (1 || CaDistance > 5) ans += 5* (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+	  if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345)/ 0.59219;
+      if (((chain->aa) + 1)->id!='P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
+	  if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
+	  if (((chain->aa) + 1)->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
   }
 
   //if (ans < externalBest)   externalBest = ans;
