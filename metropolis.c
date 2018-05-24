@@ -62,15 +62,15 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 			}
 
 			chaint->Ergt(i, j) = q;
-			loss += (chain->Erg(i, j) - q);
+			if (sim_params->protein_model.external_potential_type2 != 4 || i != 1 || j != chain->NAA - 1) loss += (chain->Erg(i, j) - q);
 		}
 	}
 	/*Also take into account the global_energy term */
 
         /*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
-	if (sim_params->protein_model.external_potential_type2 == 4) {
-		loss -= (chain->Erg(1, (chain->NAA) - 1) - chaint->Ergt(1, (chain->NAA) - 1));
-	}
+	//if (sim_params->protein_model.external_potential_type2 == 4) {
+	//	loss -= (chain->Erg(1, (chain->NAA) - 1) - chaint->Ergt(1, (chain->NAA) - 1));
+	//}
 
 	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
 	//loss += (chain->Erg(0, 0) - q);
@@ -466,9 +466,9 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 			stop("crankshaft: tried to move fixed amino acid.\n");
 		}
 	}
-
+	int swappp = 0;
 	//for cyclic peptide Gary Hack
-	while (sim_params->protein_model.external_potential_type2 == 4 && (start == 0 || end == sim_params->NAA) && ((toss >>2 )%100) > chain->Erg(0, 0)) {
+	while (sim_params->protein_model.external_potential_type2 == 4 && (start == 0 || end == chain->NAA) && (toss%100) > chain->Erg(0, 0)) {
 		toss = rand();
 		len = toss & 0x3;	/* segment length minus one */
 		if (len > chain->NAA - 2)
@@ -481,9 +481,11 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 		else {
 			end = start + len + 1;
 		}
-
-		//fprintf(stderr, "c %g \n", chain->Erg(0, 0));
+		swappp = 1;
+		//fprintf(stderr, "s %d e %d \n", start,end);
 	}
+	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
+	//fprintf(stderr, "s2 %d e %d\n", start, end);
 
 	/* pivot or crankshaft */
 	if (start == 0) {
@@ -589,6 +591,9 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 		start ++;
 	}
 	
+
+	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
+
 	//building the peptide bonds of the amino acids
 	//by now start and end have been adjusted if pivoting
 	for (int i = start; i <= end; i++){
@@ -616,12 +621,12 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 
 
 
-
+	
         /* testing if move is allowed */
 	if (!allowed(chain,chaint,biasmap,start, end, logLstar,currE, sim_params))
 		return 0;	/* disregard rejected changes */
-      
-    	
+	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
+	
 	/* commit accepted changes */
 	
 	//fprintf(stderr,"committing amino acid xaa %d - %d\n",start-1,end);
