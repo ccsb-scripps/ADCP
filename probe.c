@@ -1917,7 +1917,7 @@ void cm_ideal_4(Chain *chain, Biasmap *biasmap,simulation_params *sim_params, vo
 void ergtot(Chain *chain,Biasmap *biasmap, simulation_params *sim_params, void *mpi_comm)
 {	/*changed, can be removed */ 
 	double tote = totenergy(chain);
-	fprintf(sim_params->outfile, "Energy = totalE %.6f ( diagnolE %.6f extE %.6f cycE %.6f) Rotmers (%i)\n", tote, locenergy(chain), extenergy(chain), cyclicenergy(chain), bestRot(chain));
+	fprintf(sim_params->outfile, "Energy = totalE %.6f ( diagnolE %.6f extE %.6f firstlastE %.6f) Rotmers (%i)\n", tote, locenergy(chain), extenergy(chain), firstlastenergy(chain), bestRot(chain));
 	fprintf(stderr, "totalE %.6f extE %.6f \n", tote, extenergy(chain));
 }
 

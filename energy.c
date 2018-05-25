@@ -80,14 +80,14 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 	/* (0,0) */
 	chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
 
-	//fprintf(stderr,"first row ");
+	//fprintf(stderr,"first row %g %g", chain->Erg(0, 0), chain->Erg(1, 0));
 	/* (0,*) and (*,0) */
 	for (i = 1; i < chain->NAA; i++){
 		chain->Erg(0, i) = chain->Erg(i, 0) = 0.;
 	//	fprintf(stderr,"%g ",chain->Erg(0,i));
 	}
 	//fprintf(stderr,"\n");
-
+	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 	/* diagonal */
 	//fprintf(stderr,"diag ");
 	//fprintf(stderr,"ENERGY1 START\n");
@@ -115,7 +115,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 double totenergy(Chain *chain)
 {
 	int i, j;
-	double toten = chain->Erg(0, 0);
+	double toten = chain->Erg(0, 0)+ chain->Erg(1, 0);
 
 	//fprintf(stderr, "tote... %g\n", chain->Erg(0,0));
 	for (i = 1; i < chain->NAA; i++)
@@ -158,7 +158,7 @@ int bestRot(Chain *chain)
 
 double extenergy(Chain *chain)
 {
-	return chain->Erg(0, 0);
+	return chain->Erg(0, 0) + chain->Erg(1, 0);
 }
 
 
@@ -183,7 +183,7 @@ double targetenergy(Chain *chain)
 	//return chain->Erg(0, 0);
 }
 
-double cyclicenergy(Chain *chain)
+double firstlastenergy(Chain *chain)
 {
 
 	return chain->Erg(1, chain->NAA - 1);
@@ -1881,13 +1881,13 @@ double external(AA *a, model_params *mod_params, vector molcom)
 }
 
 
+
+
+
 /* external potential depending on atomic position */
 double external2(AA *a, model_params *mod_params, vector molcom)
 {
-
-
-
-
+	
 	/* only calculate for constrained amino acids */
 	/* TODO: add constraint type other than 1 */
 	if ((mod_params->external_potential_type2 != 1 && mod_params->external_potential_type2 != 3) || !(a->etc & CONSTRAINED2)) return 0.0;
@@ -2048,6 +2048,33 @@ double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 	return retval;
 }
 
+
+// Gary Hack cyclic peptides type 0: C-N bond, type 1: -S-S- bond to be added if needed
+double cyclic_energy(AA *a, AA *b, int type) {
+	double ans = 0.;
+	if (type == 0) {
+
+		double CaDistance = 0.0;
+		double NCDistance = 0.0;
+		double HODistance = 0.0;
+		double NODistance = 0.0;
+		double HCDistance = 0.0;
+
+		NCDistance = distance(a->n, b->c);
+		CaDistance = distance(a->ca, b->ca);
+		HODistance = distance(a->h, b->o);
+		NODistance = distance(a->n, b->o);
+		HCDistance = distance(a->h, b->c);
+
+		if (1 || CaDistance > 5) ans += 5 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+		if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
+		if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
+		if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
+		if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
+	}
+	return ans;
+}
+
 /*This calculates energy which depends on more than 2 residues, e.g. srgy 
  * residues i: start <= i <= end will be from aat all others from aa */ 
 double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *biasmap, model_params *mod_params){
@@ -2108,45 +2135,21 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
   }
 
   // Gary Hack cyclic peptides
-  if (mod_params->external_potential_type2 == 4) {
-	  double CaDistance = 0.0;
-	  double NCDistance = 0.0;
-	  double HODistance = 0.0;
-	  double NODistance = 0.0;
-	  double HCDistance = 0.0;
-	  // for first evaluation
-	  if (start == 0 && end == 0) {
-		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
-		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
-		  HODistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->o);
-		  NODistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->o);
-		  HCDistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->c);
-	  }
-	  // if motion does not change the C-N bond, use starting conformation
-	  else if (start > 1 && end < chain->NAA - 1) {
-		  NCDistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->c);
-		  CaDistance = distance(((chain->aa) + 1)->ca, ((chain->aa) + chain->NAA - 1)->ca);
-		  HODistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->o);
-		  NODistance = distance(((chain->aa) + 1)->n, ((chain->aa) + chain->NAA - 1)->o);
-		  HCDistance = distance(((chain->aa) + 1)->h, ((chain->aa) + chain->NAA - 1)->c);
-	  }
-	  // if motion moves the C-N bond, use conformation after the motion
-	  else {
-		  NCDistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->c);
-		  CaDistance = distance(((chaint->aat) + 1)->ca, ((chaint->aat) + chain->NAA - 1)->ca);
-		  HODistance = distance(((chaint->aat) + 1)->h, ((chaint->aat) + chain->NAA - 1)->o);
-		  NODistance = distance(((chaint->aat) + 1)->n, ((chaint->aat) + chain->NAA - 1)->o);
-		  HCDistance = distance(((chaint->aat) + 1)->h, ((chaint->aat) + chain->NAA - 1)->c);
+  //if (mod_params->external_potential_type2 == 4) {
+  //  // for first evaluation
+  //  if (start == 0 && end == 0) {
+  //	  ans += cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
+  //  }
+  //  // if motion does not change the C-N bond, use starting conformation
+  //  else if (start > 1 && end < chain->NAA - 1) {
+  //	  ans += cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
+  //  }
+  //  // if motion moves the C-N bond, use conformation after the motion
+  //  else {
+  //	  ans += cyclic_energy((chaint->aat) + 1, (chaint->aat) + chain->NAA - 1, 0);
+  //  }
+  //}
 
-	  }
-	  if (1 || CaDistance > 5) ans += 5 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-	  if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
-	  if (((chain->aa) + 1)->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
-	  if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
-	  if (((chain->aa) + 1)->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
-  }
-
-  //if (ans < externalBest)   externalBest = ans;
 
 
   //fprintf(stderr,"global_energy %g: best external energy %g\n", ans, externalBest);

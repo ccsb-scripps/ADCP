@@ -182,7 +182,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 	chain2->aa = NULL; chain2->xaa = NULL; chain2->erg = NULL; chain2->xaa_prev = NULL;
 	allocmem_chain(chain2,chain->NAA,chain->Nchains);
 
-
+	energy_matrix_print(chain, biasmap, sim_params);
 	if ((sim_params->protein_model.external_potential_type2 == 4 && sim_params->protein_model.external_r02[0] == 1.2)||(sim_params->protein_model.external_potential_type == 5 && sim_params->protein_model.external_r0[0] == (int)sim_params->protein_model.external_r0[0])) {
 		targetBest = 99999.;
 		double targetBestTemp = targetBest;
@@ -227,6 +227,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			targetBestTemp = targetBest;
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
 				if ((i % 1000000 == 1 && i < 10000000) || (i % 10000000 == 1)) {
+                                        energy_matrix_print(chain, biasmap, sim_params);
 					/* This bit ensures the amplitude of the moves
 					is independent of the chain's history*/
 					copybetween(chain2, chain);
@@ -242,7 +243,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			//currTargetEnergy = extenergy(chain);
 			currIndex = i;
 			//currTargetEnergy = totenergy(chain);
-			currTargetEnergy = totenergy(chain) - cyclicenergy(chain);
+			currTargetEnergy = totenergy(chain) - firstlastenergy(chain);
 			//currTargetEnergy = targetenergy(chain);
 
 			if (sim_params->protein_model.external_k[0] < external_k && currIndex % 10000 == 0) {
@@ -737,7 +738,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			if (sim_params->thermobeta != sim_params->beta1)
 				continue;
 #endif
-			if (sim_params->protein_model.external_potential_type2 == 4) fprintf(stderr, "curr cyclic energy  %g \n", extenergy(chain));
+			if (sim_params->protein_model.external_potential_type2 == 4) fprintf(stderr, "curr external energy  %g \n", extenergy(chain));
 			fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 			tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 		}

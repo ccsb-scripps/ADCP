@@ -67,15 +67,17 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 	/*Also take into account the global_energy term */
 
-        /*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
-	//if (sim_params->protein_model.external_potential_type2 == 4) {
-	//	loss -= (chain->Erg(1, (chain->NAA) - 1) - chaint->Ergt(1, (chain->NAA) - 1));
-	//}
+
 
 	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
 	//loss += (chain->Erg(0, 0) - q);
 	//fprintf(stderr,"MC move q = %g, loss = %g,",q,loss);
 	double externalloss = (chain->Erg(0, 0) - q);
+
+
+
+
+
 	double internalloss = loss;
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
@@ -84,9 +86,20 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	/* Metropolis criteria */
 	//loss += q - chain->Erg(0, 0);
 	//loss = loss/sqrt(chain->NAA) + externalloss;
+
+	double cyclicBondEnergy;
+	/*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
+	if (sim_params->protein_model.external_potential_type2 == 4 &&  (start <= 1 || end >= chain->NAA - 1)) {
+		cyclicBondEnergy = cyclic_energy((chaint->aat) + 1, (chaint->aat) + chain->NAA - 1, 0);
+		externalloss += chain->Erg(1, 0) - cyclicBondEnergy;
+	} else if (sim_params->protein_model.external_potential_type2 == 4) {
+                cyclicBondEnergy = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
+        }
+
+
 	loss = loss + externalloss;
 	
-
+	
 	
 	
 
@@ -118,8 +131,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	for (i = start; i <= end; i++)
 		for (j = 1; j < chain->NAA; j++)
 	    	chain->Erg(i, j) = chain->Erg(j, i) = chaint->Ergt(i, j);
+
 	chain->Erg(0, 0) = q;
-	
+
+	if (sim_params->protein_model.external_potential_type2 == 4) {
+		chain->Erg(1, 0) = cyclicBondEnergy;
+	}
 	*currE -= internalloss + externalloss;
 	
     return 1;
@@ -199,25 +216,25 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		//
 		moved = 1;
 		for (int j = 1; j < chain->NAA; j++) {
-		    chaint->aat[j].h[i] = chain->aa[j].h[i] + movement;
-			chaint->aat[j].n[i] = chain->aa[j].n[i] + movement;
-			chaint->aat[j].ca[i] = chain->aa[j].ca[i] + movement;
-			chaint->aat[j].c[i] = chain->aa[j].c[i] + movement;
-			chaint->aat[j].o[i] = chain->aa[j].o[i] + movement;
+		    //chaint->aat[j].h[i] = chain->aa[j].h[i] + movement;
+			//chaint->aat[j].n[i] = chain->aa[j].n[i] + movement;
+			//chaint->aat[j].ca[i] = chain->aa[j].ca[i] + movement;
+			//chaint->aat[j].c[i] = chain->aa[j].c[i] + movement;
+			//chaint->aat[j].o[i] = chain->aa[j].o[i] + movement;
 			chaint->aat[j].g[i] = chain->aa[j].g[i] + movement;
 			chaint->aat[j].g2[i] = chain->aa[j].g2[i] + movement;
-			chaint->aat[j].cb[i] = chain->aa[j].cb[i] + movement;
+			//chaint->aat[j].cb[i] = chain->aa[j].cb[i] + movement;
 
-			//if (chaint->aat[j].id != 'P') {
-			//	chaint->aat[j].h[i] += movement;
-			//}
-			//chaint->aat[j].n[i] += movement;
-			//chaint->aat[j].ca[i] += movement;
-			//chaint->aat[j].c[i] += movement;
-			//chaint->aat[j].o[i] += movement;
-			//if (chaint->aat[j].id != 'G') {
-			//	chaint->aat[j].cb[i] += movement;
-			//}
+			if (chaint->aat[j].id != 'P') {
+				chaint->aat[j].h[i] += movement;
+			}
+			chaint->aat[j].n[i] += movement;
+			chaint->aat[j].ca[i] += movement;
+			chaint->aat[j].c[i] += movement;
+			chaint->aat[j].o[i] += movement;
+			if (chaint->aat[j].id != 'G') {
+				chaint->aat[j].cb[i] += movement;
+			}
 
 		}
 	}
@@ -468,7 +485,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	}
 	int swappp = 0;
 	//for cyclic peptide Gary Hack
-	while (sim_params->protein_model.external_potential_type2 == 4 && (start == 0 || end == chain->NAA) && (toss%100) > chain->Erg(0, 0)) {
+	while (sim_params->protein_model.external_potential_type2 == 4 && (start == 0 || end == chain->NAA) && ((toss%50) > chain->Erg(1, 0))) {
 		toss = rand();
 		len = toss & 0x3;	/* segment length minus one */
 		if (len > chain->NAA - 2)
@@ -678,13 +695,13 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 		}*/
 	}
 	else if (sim_params->protein_model.external_potential_type == 5 && rand()%100 < 5 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
-		//sim_params->accept_counter++;
+	//	//sim_params->accept_counter++;
 		transaccept++;
-		//fprintf(stderr, "translation!\n");
-		/*if (changeamp && amplitude < 0.0 && ++score > 16 && amplitude > -M_PI) {
-		score = 0;
-		amplitude *= 1.1;
-		}*/
+	//	//fprintf(stderr, "translation!\n");
+	//	/*if (changeamp && amplitude < 0.0 && ++score > 16 && amplitude > -M_PI) {
+	//	score = 0;
+	//	amplitude *= 1.1;
+	//	}*/
 	}
 	else {		/* rejected */
 		sim_params->reject_counter++; 
