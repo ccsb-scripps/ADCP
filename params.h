@@ -87,6 +87,10 @@ typedef struct {
   int fix_chi_angles;            // fix the read-in (or adjusted) side chain dihedral angles during the mc
   int fix_CA_atoms;              // fix the adjusted CA atomic positions (only rotate peptide bonds in mc)
   /* atomic radii */
+  int opt; //optimizing strategy: 0: regular MC, 1: repeated annealing, 2: temp exchange, 3: regular MC writing out bestE
+  double opt_totE_weight; //the target energy type while optimizing, w1*totE + w2*extE + w3*firstlastE
+  double opt_extE_weight; //the target energy type while optimizing, w1*totE + w2*extE + w3*firstlastE
+  double opt_firstlastE_weight; //the target energy type while optimizing, w1*totE + w2*extE + w3*firstlastE
   double rca;   // CA_ vdW Rmin
   double rcb;   // CB_ vdW Rmin
   double rc;    // C__ vdW Rmin

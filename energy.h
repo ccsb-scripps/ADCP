@@ -20,7 +20,8 @@ double totenergy(Chain *chain);
 double locenergy(Chain *chain);
 double extenergy(Chain *chain);
 double targetenergy(Chain *chain);
-double cyclicenergy(Chain *chain);
+double firstlastenergy(Chain *chain);
+
 int bestRot(Chain *chain);
 void energy_matrix_print(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_initialise(Chain *,Biasmap *, model_params *mod_params);
@@ -57,6 +58,7 @@ double energy1(AA *, model_params *mod_params);
 /* the energy of interactions between between two amino acids */
 double energy2( Biasmap *,AA *,  AA *, model_params *mod_params);
 /* the energy terms from terms that don't involve 1 or 2 residues */
+double cyclic_energy(AA *, AA *, int);
 double global_energy(int, int, Chain*, Chaint*,Biasmap *, model_params *mod_params);
 double all_vdw(Biasmap *biasmap, Chain *chain, model_params *mod_params);
 

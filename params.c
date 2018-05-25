@@ -419,6 +419,12 @@ void model_param_finalise(model_params *this) {
   /* fixed amino acids */
   if (this->fixed_aalist_file) free(this->fixed_aalist_file);
 
+  /*optimizing strategy*/
+  this->opt = 0;
+  this->opt_extE_weight = 1.0;
+  this->opt_firstlastE_weight = 0.0;
+  this->opt_extE_weight = 0.0;
+
   /* external potential */
   this->external_potential_type = 0;
   for (int i=0; i<3; i++) {
@@ -979,6 +985,19 @@ void model_param_read(char *prm, /* input line */
 		found_param += 1;
 		start = 6;
 	}
+
+	/* optimizing strategy*/
+	k = sscanf(prm, "Opt=%d,%lf,%lf,%lf",
+		&(this->opt),
+		&(this->opt_totE_weight),
+		&(this->opt_extE_weight),
+		&(this->opt_firstlastE_weight));
+	fprintf(stderr,"Read in %d optimizing strategy totE %g.\n", this->opt, this->opt_totE_weight);
+	if (k>0) {
+		found_param += 1;
+		start = 4;
+	}
+
 
 	/* contact parameters */
 	k=sscanf(prm, "Contact=%lf,%lf,%lf,%lf",
