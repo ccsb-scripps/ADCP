@@ -87,7 +87,8 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 	//	fprintf(stderr,"%g ",chain->Erg(0,i));
 	}
 	//fprintf(stderr,"\n");
-	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
+	
+	if (mod_params->external_potential_type2 == 4)	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 	/* diagonal */
 	//fprintf(stderr,"diag ");
 	//fprintf(stderr,"ENERGY1 START\n");
