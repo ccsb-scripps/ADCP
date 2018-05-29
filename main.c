@@ -213,8 +213,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		/*optimizing parameters*/
 		int noImprovHeatSteps = 1000000;
 		int noImprovStopSteps = 40000000;
-		int swapBadSteps = 20000;
-		int swapGoodSteps = 20000;
+		int swapBadSteps = 200000;
+		int swapGoodSteps = 200000;
 		double goodEnergyDiff = 5.0;
 		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
@@ -310,7 +310,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						if (calculateRMSD(swapChains[ind], chain) < rmsdCutoff) {
 							inCache = 1;
 							//fprintf(stderr, "inCache");
-							if (currTargetEnergy < swapEnergy[ind] - 0.001) {
+							if (currTargetEnergy < swapEnergy[ind] - 1) {
 								//fprintf(stderr, "inCache %d \n",ind);
 								fprintf(stderr, "swap between best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
 								copybetween(swapChains[ind], chain);
@@ -373,7 +373,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
 					if (calculateRMSD(swapChains[ind], chain) < rmsdCutoff) {
 						inCache = 1;
-						if (currTargetEnergy < swapEnergy[ind] - 0.001) {
+						if (currTargetEnergy < swapEnergy[ind] - 1) {
 							copybetween(swapChains[ind], chain);
 							fprintf(stderr, "swap between good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
 							swapEnergy[ind] = currTargetEnergy;
