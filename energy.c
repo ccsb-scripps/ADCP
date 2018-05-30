@@ -779,6 +779,9 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	//return -hbs * (hdonor(a, b) + hdonor(b, a));
 	
 	double fact = 1.0;
+	double factab = 1.0;
+	double factba = 1.0;
+
 //	int i = a->num; int j = b->num;
 //	if( Distb( i, i ) * Distb( j, j ) == 0) fact /= 3.0;	
 	//fprintf(stderr,"hbond %d %c",a->num,a->id);
@@ -795,18 +798,43 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	//fprintf(stderr," C: %g",b->c[0]);
 	//fprintf(stderr," %g",b->c[1]);
 	//fprintf(stderr," %g\n",b->c[2]);
-
+	double HD_a_HA_b = 0.0;
+	double HD_b_HA_a = 0.0;
 	if (a->id == 'P') {
 		if (b->id == 'P') // no a->H, no b->H
 			return 0.0;
 		else // no a->H
-			return fact*-mod_params->hbs * hstrength(b->n,b->h,a->o,a->c, mod_params);
+			HD_b_HA_a = hstrength(b->n, b->h, a->o, a->c, mod_params);
+			//return fact*-mod_params->hbs * hstrength(b->n,b->h,a->o,a->c, mod_params);
 	} else {
 		if (b->id == 'P') // no b->H
-			return fact*-mod_params->hbs * hstrength(a->n,a->h,b->o,b->c, mod_params);
-		else
-			return fact*-mod_params->hbs * (hstrength(a->n,a->h,b->o,b->c, mod_params) + hstrength(b->n,b->h,a->o,a->c, mod_params));
+			HD_b_HA_a = hstrength(b->n, b->h, a->o, a->c, mod_params);
+			//return fact*-mod_params->hbs * hstrength(a->n,a->h,b->o,b->c, mod_params);
+		else {
+			HD_b_HA_a = hstrength(b->n, b->h, a->o, a->c, mod_params);
+			HD_a_HA_b = hstrength(a->n, a->h, b->o, b->c, mod_params);
+			//return fact*-mod_params->hbs * (hstrength(a->n, a->h, b->o, b->c, mod_params) + hstrength(b->n, b->h, a->o, a->c, mod_params));
+		}
 	}
+	if (a->acceptor != 0 || b->donor != 0) {
+		factba = factba / 4;
+		//fprintf(stderr, " HD_BA %d %d %d %d\n", a->acceptor, b->donor, a->num, b->num);
+	}
+	if (a->donor != 0 || b->acceptor != 0) {
+		factab = factab / 4;
+		//fprintf(stderr, " HD_AB %d %d %d %d\n", a->donor, b->acceptor, a->num, b->num);
+	}
+
+
+	if (HD_b_HA_a > 0.6) {
+		a->acceptor = b->num;
+		b->donor = a->num;
+	}
+	if (HD_a_HA_b > 0.6) {
+		b->acceptor = a->num;
+		a->donor = b->num;
+	}
+	return fact*-mod_params->hbs*(factba*HD_b_HA_a + factab*HD_a_HA_b);
 }
 
 /* The scaling factor of hydrophobic interaction between a and b
