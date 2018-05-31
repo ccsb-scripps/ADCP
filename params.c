@@ -421,7 +421,7 @@ void model_param_finalise(model_params *this) {
 
   /*optimizing strategy*/
   this->opt = 0;
-  this->opt_extE_weight = 1.0;
+  this->opt_totE_weight = 1.0;
   this->opt_firstlastE_weight = 0.0;
   this->opt_extE_weight = 0.0;
 

@@ -74,11 +74,16 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 			}
 
 			chaint->Ergt(i, j) = q;
-			if (sim_params->protein_model.external_potential_type2 != 4 || i != 1 || j != chain->NAA - 1) loss += (chain->Erg(i, j) - q);
+			if (i != 1 || j != chain->NAA - 1) {
+				loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
+			}
+			else {
+				loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
+			}
+				
 		}
 	}
 	/*Also take into account the global_energy term */
-
 
 
 	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
@@ -104,14 +109,15 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	if (sim_params->protein_model.external_potential_type2 == 4 &&  (start <= 1 || end >= chain->NAA - 1)) {
 		cyclicBondEnergy = cyclic_energy((chaint->aat) + 1, (chaint->aat) + chain->NAA - 1, 0);
 		externalloss += chain->Erg(1, 0) - cyclicBondEnergy;
-	} else if (sim_params->protein_model.external_potential_type2 == 4) {
-                cyclicBondEnergy = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
-        }
+	}
+	else if (sim_params->protein_model.external_potential_type2 == 4) {
+		cyclicBondEnergy = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
+	}
 
 
-	loss = loss + externalloss;
+	loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
 	
-	
+
 	
 	
 
