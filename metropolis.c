@@ -46,16 +46,6 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	int i, j;
 	double q, loss = 0.0;
 	
-
-	for (j = 1; j < chain->NAA; j++) {
-		(chaint->aat + j)->acceptor = 0;
-		(chaint->aat + j)->donor = 0;
-		(chain->aa + j)->donor = 0;
-		(chain->aa + j)->acceptor = 0;
-	}
-
-
-
 	for (i = start; i <= end; i++){
 
 		for (j = 1; j < chain->NAA; j++) {

@@ -992,7 +992,8 @@ void model_param_read(char *prm, /* input line */
 		&(this->opt_totE_weight),
 		&(this->opt_extE_weight),
 		&(this->opt_firstlastE_weight));
-	fprintf(stderr,"Read in %d optimizing strategy totE %g.\n", this->opt, this->opt_totE_weight);
+	//fprintf(stderr,"Read in %d optimizing strategy totE %g.\n", this->opt, this->opt_totE_weight);
+
 	if (k>0) {
 		found_param += 1;
 		start = 4;

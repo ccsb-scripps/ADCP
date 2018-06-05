@@ -959,19 +959,24 @@ int main(int argc, char *argv[])
     
 	if (sim_params.protein_model.external_potential_type == 5) {
 
-		Cgridmap_initialise();
-		fprintf(stderr, "C Grid map initialisation finished");
-		fprintf(stderr, "best target energy %g\n", targetBest);
-		CAgridmap_initialise();
-		fprintf(stderr, "CA Grid map initialisation finished");
-		NAgridmap_initialise();
-		Hgridmap_initialise();
-		Sgridmap_initialise();
-		Ogridmap_initialise();
-		//fprintf(stderr, "O Grid map initialisation finished");
-		Ngridmap_initialise();
-		egridmap_initialise();
-		dgridmap_initialise();
+		//Cgridmap_initialise();
+
+		gridbox_initialise();
+
+		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
+
+		gridmap_initialise("rigidReceptor.C.map", 0);
+		//fprintf(stderr, "C Grid map initialisation finished \n");
+		gridmap_initialise("rigidReceptor.N.map", 1);
+		//fprintf(stderr, "N Grid map initialisation finished \n");
+		gridmap_initialise("rigidReceptor.OA.map", 2);
+		gridmap_initialise("rigidReceptor.H.map", 3);
+		gridmap_initialise("rigidReceptor.S.map", 4);
+		gridmap_initialise("rigidReceptor.A.map", 5);
+		gridmap_initialise("rigidReceptor.NA.map", 6);
+		gridmap_initialise("rigidReceptor.e.map", 7);
+		gridmap_initialise("rigidReceptor.d.map", 8);
+
 		fprintf(stderr, "AD Grid maps initialisation finished \n");
 	}
 	/* HERE STARTS THE ACTUAL SIMULATION */
@@ -1089,8 +1094,10 @@ int main(int argc, char *argv[])
 #ifdef PARALLEL
     /* finalise MPI */
     MPI_Finalize();
-	if (rank == 0)
+	if (rank == 0);
 #endif
+
+	/*
 	free(Cmapvalue);
 	free(CAmapvalue);
 	free(NAmapvalue);
@@ -1101,8 +1108,10 @@ int main(int argc, char *argv[])
 	free(emapvalue);
 	free(dmapvalue);
 	fprintf(stderr, "best target energy %g\n", targetBest);
+	*/
 
-
+	for (int atype = 0; atype < sizeof(gridmapvalues) / sizeof(gridmapvalues)[0]; atype++)
+		free(gridmapvalues[atype]);
 	fprintf(stderr,"The program has successfully finished in %d seconds. :)  Bye-bye!\n", time(NULL)- startTime);
 	return EXIT_SUCCESS;
 }

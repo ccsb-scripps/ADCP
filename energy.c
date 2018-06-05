@@ -348,6 +348,8 @@ void biasmap_finalise(Biasmap *biasmap){
 
 }
 
+
+/*make energy grid map smoother*/
 double lowerGridEnergy(double E) {
 	//return E;
 	//if (E > 2.71828) {
@@ -361,27 +363,23 @@ double lowerGridEnergy(double E) {
 	return E;
 }
 
-void Cgridmap_initialise() {
+/*init the size and center and spacing of AD gridbox*/
+void gridbox_initialise() {
 	FILE *gridmap = NULL;
 	gridmap = fopen("rigidReceptor.C.map", "r");
 	char line[256];
-	int i = 0, j = 0, k = 0;
-	//float spacing;
-	//int NX, NY, NZ;
-	//double spacing, centerX, centerY, centerZ;
-	//double mapvalues[];
-	targetBest = 999999.0;
+	int i = 0, j = 0;
 	while (fgets(line, sizeof(line), gridmap)) {
 		if (i < 3) {
 			//printf("%s", line);
 			i++;
 			continue;
-		}		
+		}
 		char * pch;
-		pch = strtok(line, " ");		
+		pch = strtok(line, " ");
 		j = 0;
 		while (pch != NULL)
-		{			
+		{
 			if (i == 3 && j == 1) {
 				spacing = atof(pch);
 			}
@@ -409,185 +407,30 @@ void Cgridmap_initialise() {
 		i++;
 		if (i > 5) break;
 	}
-	printf("grid initialise succuss %i %i %i \n", NX, NY, NZ);
-	//double mapvalues[NX*NY*NZ];
-	double *mapvalues = malloc(NX*NY*NZ * sizeof(double));
-	//printf("succCACAussss %i %i %i \n", NX, NY, NZ);
-	i = 0;
-	while (fgets(line, sizeof(line), gridmap)) {
-		//mapvalues[i] = atof(line);
-		mapvalues[i] = lowerGridEnergy(atof(line));
-		i++;
-	}
+	printf("grid box initialise succuss %i %i %i \n", NX, NY, NZ);
 	fclose(gridmap);
-	//printf("succuss %s \n", mapvalues[0]);
-	//printf("succuss %i \n", sizeof(mapvalues));
-	Cmapvalue = mapvalues;
-	//free(mapvalues);
 }
 
 
-
-void Hgridmap_initialise() {
+/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
+void gridmap_initialise(char *filename, int atype) {
 	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.HD.map", "r");
+	gridmap = fopen(filename, "r");
 	char line[256];
 	int i = 0;
-	double *Hmapvalues = malloc(NX*NY*NZ * sizeof(double));
+	double *currgridmapvalues = malloc(NX*NY*NZ * sizeof(double));
 	while (fgets(line, sizeof(line), gridmap)) {
 		if (i < 6) {
 			i++;
 			continue;
 		}
-		Hmapvalues[i - 6] = lowerGridEnergy(atof(line));
+		currgridmapvalues[i - 6] = lowerGridEnergy(atof(line));
 		i++;
 	}
 	fclose(gridmap);
+	gridmapvalues[atype] = currgridmapvalues;
 
-	Hmapvalue = Hmapvalues;
-	//free(Hmapvalues);
 }
-
-void Ngridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.N.map", "r");
-	char line[256];
-	int i = 0;
-	double *Nmapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		Nmapvalues[i - 6] = lowerGridEnergy(atof(line));
-		i++;
-	}
-	fclose(gridmap);
-
-	Nmapvalue = Nmapvalues;
-	//free(Nmapvalues);
-}
-
-void CAgridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.A.map", "r");
-	char line[256];
-	int i = 0;
-	double *CAmapvalues = malloc(NX*NY*NZ * sizeof(double));
-	
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		CAmapvalues[i - 6] = atof(line);
-		i++;
-	}
-	fclose(gridmap);
-	CAmapvalue = CAmapvalues;
-	//free(CAmapvalues);
-}
-
-void NAgridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.NA.map", "r");
-	char line[256];
-	int i = 0;
-	double *NAmapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		NAmapvalues[i - 6] = lowerGridEnergy(atof(line));
-		i++;
-	}
-	fclose(gridmap);
-
-	NAmapvalue = NAmapvalues;
-	//free(NAmapvalues);
-}
-
-void Sgridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.S.map", "r");
-	char line[256];
-	int i = 0;
-	double *Smapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		Smapvalues[i - 6] = lowerGridEnergy(atof(line));
-		i++;
-	}
-	fclose(gridmap);
-
-	Smapvalue = Smapvalues;
-	//free(Smapvalues);
-}
-
-void Ogridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.OA.map", "r");
-	char line[256];
-	int i = 0;
-	double *Omapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		Omapvalues[i - 6] = lowerGridEnergy(atof(line));
-		i++;
-	}
-	fclose(gridmap);
-
-	Omapvalue = Omapvalues;
-	//free(Omapvalues);
-}
-
-void egridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.e.map", "r");
-	char line[256];
-	int i = 0;
-	double *emapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		emapvalues[i - 6] = lowerGridEnergy(atof(line));
-		i++;
-	}
-	fclose(gridmap);
-
-	emapvalue = emapvalues;
-	//free(emapvalues);
-}
-
-void dgridmap_initialise() {
-	FILE *gridmap = NULL;
-	gridmap = fopen("rigidReceptor.d.map", "r");
-	char line[256];
-	int i = 0;
-	double *dmapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
-		if (i < 6) {
-			i++;
-			continue;
-		}
-		dmapvalues[i - 6] = lowerGridEnergy(atof(line));
-		i++;
-	}
-	fclose(gridmap);
-
-	dmapvalue = dmapvalues;
-	//free(dmapvalues);
-}
-
 
 /***********************************************************/
 /****               ENERGY  CONTRIBUTIONS               ****/
@@ -779,9 +622,6 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	//return -hbs * (hdonor(a, b) + hdonor(b, a));
 	
 	double fact = 1.0;
-	double factab = 1.0;
-	double factba = 1.0;
-
 //	int i = a->num; int j = b->num;
 //	if( Distb( i, i ) * Distb( j, j ) == 0) fact /= 3.0;	
 	//fprintf(stderr,"hbond %d %c",a->num,a->id);
@@ -798,43 +638,19 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	//fprintf(stderr," C: %g",b->c[0]);
 	//fprintf(stderr," %g",b->c[1]);
 	//fprintf(stderr," %g\n",b->c[2]);
-	double HD_a_HA_b = 0.0;
-	double HD_b_HA_a = 0.0;
+
 	if (a->id == 'P') {
 		if (b->id == 'P') // no a->H, no b->H
 			return 0.0;
 		else // no a->H
-			HD_b_HA_a = hstrength(b->n, b->h, a->o, a->c, mod_params);
-			//return fact*-mod_params->hbs * hstrength(b->n,b->h,a->o,a->c, mod_params);
-	} else {
+			return fact*-mod_params->hbs * hstrength(b->n, b->h, a->o, a->c, mod_params);
+	}
+	else {
 		if (b->id == 'P') // no b->H
-			HD_b_HA_a = hstrength(b->n, b->h, a->o, a->c, mod_params);
-			//return fact*-mod_params->hbs * hstrength(a->n,a->h,b->o,b->c, mod_params);
-		else {
-			HD_b_HA_a = hstrength(b->n, b->h, a->o, a->c, mod_params);
-			HD_a_HA_b = hstrength(a->n, a->h, b->o, b->c, mod_params);
-			//return fact*-mod_params->hbs * (hstrength(a->n, a->h, b->o, b->c, mod_params) + hstrength(b->n, b->h, a->o, a->c, mod_params));
-		}
+			return fact*-mod_params->hbs * hstrength(a->n, a->h, b->o, b->c, mod_params);
+		else
+			return fact*-mod_params->hbs * (hstrength(a->n, a->h, b->o, b->c, mod_params) + hstrength(b->n, b->h, a->o, a->c, mod_params));
 	}
-	if (a->acceptor != 0 || b->donor != 0) {
-		factba = factba / 4;
-		//fprintf(stderr, " HD_BA %d %d %d %d\n", a->acceptor, b->donor, a->num, b->num);
-	}
-	if (a->donor != 0 || b->acceptor != 0) {
-		factab = factab / 4;
-		//fprintf(stderr, " HD_AB %d %d %d %d\n", a->donor, b->acceptor, a->num, b->num);
-	}
-
-
-	if (HD_b_HA_a > 0.6) {
-		a->acceptor = b->num;
-		b->donor = a->num;
-	}
-	if (HD_a_HA_b > 0.6) {
-		b->acceptor = a->num;
-		a->donor = b->num;
-	}
-	return fact*-mod_params->hbs*(factba*HD_b_HA_a + factab*HD_a_HA_b);
 }
 
 /* The scaling factor of hydrophobic interaction between a and b
@@ -1588,37 +1404,40 @@ double gridenergy(double X, double Y, double Z, int i) {
 	double exactGridZ = (Z - centerZ) / spacing + (NZ - 1) / 2;
 	double perAtomtype = 0.0, deSolv = 0.0, eStatic = 0.0;
 	//fprintf(stderr, "type %i charge %g \n", i, charge);
-	double *mapvalue;
+	double *mapvalue = gridmapvalues[i];;
+	double *emapvalue = gridmapvalues[7];
+	double *dmapvalue = gridmapvalues[8];
 	//fprintf(stderr, "type %i charge %g \n", i, charge);
-	/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
+	/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
+
 	switch (i)
 	{
 		case 0:
-			mapvalue = Cmapvalue;
+			//mapvalue = Cmapvalue;
 			charge = 0.176;
 			break;
 		case 1:
-			mapvalue = Nmapvalue;
+			//mapvalue = Nmapvalue;
 			charge = -0.346;
 			break;
 		case 2:
-			mapvalue = Omapvalue;
+			//mapvalue = Omapvalue;
 			charge = -0.271;
 			break;
 		case 3:
-			mapvalue = Hmapvalue;
+			//mapvalue = Hmapvalue;
 			charge = 0.163;
 			break;
 		case 4:
-			mapvalue = Smapvalue;
+			//mapvalue = Smapvalue;
 			charge = -0.173;
 			break;
 		case 5:
-			mapvalue = CAmapvalue;
+			//mapvalue = CAmapvalue;
 			charge = 0;
 			break;
 		case 6:
-			mapvalue = NAmapvalue;
+			//mapvalue = NAmapvalue;
 			charge = -0.247;
 			break;
 		default:

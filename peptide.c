@@ -824,8 +824,6 @@ void aat_init(Chain * chain, Chaint * chaint){
 	  (chaint)->aat[i].num = chain->aa[i].num;
 	  (chaint)->aat[i].chainid = chain->aa[i].chainid;
 	  (chaint)->aat[i].SCRot = chain->aa[i].SCRot;
-	  (chaint)->aat[i].donor = chain->aa[i].donor;
-	  (chaint)->aat[i].acceptor = chain->aa[i].acceptor;
     }
   }	
   if(sizeof(chaint)->xaat_prev != (chain->Nchains+1) * sizeof(triplet)){
@@ -2139,8 +2137,6 @@ void initialize(Chain *chain, Chaint * chaint, simulation_params *sim_params)
 	amidorient(chain->xaa_prev[1], NULL, (chain->aa) + 1);
 	for (i = 1; i < chain->NAA - 1 ; i++) {
 		chain->aa[i].SCRot = 0;
-		chain->aa[i].donor = 0;
-		chain->aa[i].acceptor = 0;
 		if (chain->aa[i].chainid == chain->aa[i+1].chainid) { //build the next amino acid
 			castvec(orig, chain->aa[i + 1].ca);
 			//first find the right xaa[i]
