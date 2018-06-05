@@ -52,8 +52,6 @@ typedef struct _AA {
 	char id;		/* 1-letter type abbreviation */
 	int chainid;		/* chain id (1, 2, ...) */
 	int SCRot;   /*best scoring side chain coords*/
-	int donor; /*H bond donor, -N-H-----O*/
-	int acceptor; /*H bond accptor -C=O-----H*/
 } AA;
 
 typedef struct _FLEX_data{

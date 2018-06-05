@@ -27,21 +27,14 @@ void energy_matrix_print(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_initialise(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_finalise(Biasmap *biasmap);
 double centerX, centerY, centerZ, spacing;
-double *Nmapvalue, *Omapvalue, *CAmapvalue, *Hmapvalue, *Cmapvalue, *NAmapvalue, *Smapvalue, *emapvalue, *dmapvalue;
+//double *Nmapvalue, *Omapvalue, *CAmapvalue, *Hmapvalue, *Cmapvalue, *NAmapvalue, *Smapvalue, *emapvalue, *dmapvalue;
 int NX, NY, NZ;
 double targetBest;
 //double totalEBest;
 double lowerGridEnergy(double);
-void NAgridmap_initialise();
-void CAgridmap_initialise();
-void Hgridmap_initialise();
-void Sgridmap_initialise();
-void Cgridmap_initialise();
-void Ngridmap_initialise();
-void Ogridmap_initialise();
-void egridmap_initialise();
-void dgridmap_initialise();
-
+void gridbox_initialise();
+double *gridmapvalues[9];
+void gridmap_initialise(char *, int);
 
 double gridenergy(double X, double Y, double Z, int i);
 
