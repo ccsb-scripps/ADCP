@@ -137,7 +137,7 @@ void thermoswap(Chain* chain, simulation_params *sim_params)
 void thermoset(simulation_params *sim_params)
 {
 	if (sim_params->beta2 > 0.0 && sim_params->beta1 > 0.0 && sim_params->pace > 0 && sim_params->stretch > 0 && sim_params->intrvl > 0)
-		sim_params->bstp = pow(sim_params->beta2 / sim_params->beta1, sim_params->intrvl / ((double)sim_params->stretch));
+		sim_params->bstp = pow(sim_params->beta2 / sim_params->beta1, sim_params->intrvl / ((double)sim_params->pace * sim_params->stretch));
 	else
 		sim_params->bstp = 1.0;
 
@@ -447,124 +447,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		}
 
 	}
-
-
-	/* temperature swaps */
-	else if (sim_params->protein_model.opt == 2) {
-		targetBest = 99999.;
-		double targetBestTemp = targetBest;
-		//double targetBestPrev = targetBest;
-		double currTargetEnergy = 99999.;
-		double lastTargetEnergy = 9999.;
-		int lastIndex = 0;
-		int bestIndex = 0;
-		int pdbCount = 0;
-		int stopSignal = 0;
-		int swapInd = 0;
-		int swapLength = 6;
-		int currTempInd = 3;
-		Chain *lastChain = (Chain *)malloc(sizeof(Chain));
-		lastChain->aa = NULL; lastChain->xaa = NULL; lastChain->erg = NULL; lastChain->xaa_prev = NULL;
-
-		allocmem_chain(lastChain, chain->NAA, chain->Nchains);
-		double swapTemps[swapLength];
-
-		for (int i = 0; i < swapLength; ++i) {
-			swapTemps[i] = 0.7 + 0.1*i;
-		}
-		double external_k = sim_params->protein_model.external_k[0];
-		fprintf(stderr, "external energy with swapping temp \n");
-		fprintf(stderr, "begin run with pace %d stretch %d \n", sim_params->pace, sim_params->stretch);
-		for (i = 1; i < sim_params->stretch; i++) {
-			if (stopSignal) break;
-			targetBestTemp = targetBest;
-			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
-				if ((i % 100 == 1 && i < 1000) || (i % 1000 == 1)) {
-					/* This bit ensures the amplitude of the moves
-					is independent of the chain's history*/
-					copybetween(chain2, chain);
-					move(chain2, chaint, biasmap, 0.0, &temp, -1, sim_params);
-					for (j = 1; (j < sim_params->pace || j < 1024); j++) {
-						move(chain2, chaint, biasmap, 0.0, &temp, 1, sim_params);
-					}
-				}
-			}
-			targetBest = targetBestTemp;
-			//fprintf(stderr, "energies C %g %g %g\n", sim_params->protein_model.external_k[0], externalBest, extenergy(chain));
-			for (j = 1; (j < sim_params->pace || j < 1024); j++) {
-				//targetBestPrev = targetBest;
-				move(chain, chaint, biasmap, 0, &temp, 0, sim_params);
-				currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
-					+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
-					+ sim_params->protein_model.opt_firstlastE_weight*firstlastenergy(chain);
-
-				if (currTargetEnergy - targetBest < 0.0) {
-					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					lastIndex = i*sim_params->pace + j;
-					sim_params->protein_model.external_k[0] = external_k;
-					pdbCount++;
-					copybetween(lastChain, chain);
-					lastTargetEnergy = currTargetEnergy;
-					targetBest = currTargetEnergy;
-					bestIndex = i*sim_params->pace + j;
-				}
-				//(targetBest > 20 || currTargetEnergy - targetBest < 3.0) &&
-				else if ((i*sim_params->pace + j - bestIndex) > 4000000) {
-					fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i*sim_params->pace + j, bestIndex);
-					stopSignal = 1;
-					break;
-				}
-				//else if ((i*sim_params->pace + j - bestIndex) > 100000) {
-				//	sim_params->protein_model.external_k[0] = external_k * 1.5;
-				//}
-				else if (currTargetEnergy != lastTargetEnergy && (i*sim_params->pace + j - lastIndex)>sim_params->pace) {
-					//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-					//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					lastIndex = i*sim_params->pace + j;
-
-					pdbCount++;
-					copybetween(lastChain, chain);
-					lastTargetEnergy = currTargetEnergy;
-
-					if (currTargetEnergy - targetBest < 5.0) {
-						fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-						tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-						bestIndex = i*sim_params->pace + j;
-						if (currTempInd == 0) {
-							sim_params->protein_model.external_k[0] = external_k * swapTemps[1];
-							currTempInd = 1;
-						}
-						else if (currTempInd == swapLength - 1) {
-							sim_params->protein_model.external_k[0] = external_k * swapTemps[swapLength - 2];
-							currTempInd = swapLength - 2;
-						}
-						else {
-							if (rand() * 2 < RAND_MAX) {
-								sim_params->protein_model.external_k[0] = swapTemps[currTempInd + 1];
-								currTempInd = currTempInd +1;
-							}
-							else {
-								sim_params->protein_model.external_k[0] = swapTemps[currTempInd - 1];
-								currTempInd = currTempInd - 1;
-							}
-
-						}
-					}
-				}
-			}
-			/* annealing or tempering swap */
-			if (--k == 0) {
-				thermoswap(chain, sim_params);
-				k = sim_params->intrvl;
-
-
-			}
-		}
-		freemem_chain(lastChain); free(lastChain);
-
     /* regular MC with bestE recorded */
-	} else if (sim_params->protein_model.opt == 3) {
+	else if (sim_params->protein_model.opt == 3) {
 		//double targetBestPrev = targetBest;
 		double targetBestTemp = targetBest;
 		targetBest = 9999.;
@@ -592,32 +476,16 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					+ sim_params->protein_model.opt_firstlastE_weight*firstlastenergy(chain);
 				//currTargetEnergy = targetenergy(chain);
 				if (currTargetEnergy - targetBest < 0.0) {
-					//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-					//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 					//lastTargetEnergy = currTargetEnergy;
 					targetBest = currTargetEnergy;
 					//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), "Gary_Hack.pdb", totenergy(chain));
 				}
-				
-
 			}
-#ifdef PARALLEL
-			/*static FILE* fptr;
-			if(fptr == NULL){
-			char filename[9];
-			sprintf(filename, "%d.temp", rank);
-			fptr = fopen(filename,"w");
-			//fprintf(fptr,"#T: %f\n", 1000.0/(1.9858775*thermobeta)-273.15);
-			}
-			fprintf(fptr,"%f %f\n",thermobeta,totenergy()); */
-			if (sim_params->thermobeta != sim_params->beta1)
-				continue;
-#endif
-			if (1) {
-				fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-				tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-				//lastTargetEnergy = currTargetEnergy;
-			}
+			fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+			tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+			//lastTargetEnergy = currTargetEnergy;			
 			/* annealing or tempering swap */
 			if (--k == 0) {
 				thermoswap(chain, sim_params);
@@ -626,8 +494,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		}
 	}
 	else {
-		for (i = 1; i < sim_params->stretch; i++) {
-
+		for (i = 1; i <= sim_params->stretch; i++) {
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
 				if ((i % 100 == 1 && i < 1000) || (i % 1000 == 1)) {
 					/* This bit ensures the amplitude of the moves
@@ -639,35 +506,48 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					}
 				}
 			}
-			for (j = 1; (j < sim_params->pace || j < 1024); j++) {
+			//		for (j = 1; (j < sim_params->pace || j < 1024); j++) {
+			for (j = 0; j < sim_params->pace; j++) {
+				//sim_params->NS = 1;temp = totenergy(chain);
 				move(chain, chaint, biasmap, 0, &temp, 0, sim_params);
 				/* annealing or tempering swap */
 				if (--k == 0) {
-					thermoswap(chain, sim_params);
+					for (int t = 0; t < sim_params->nswap_per_try; t++) {
+						thermoswap(chain, sim_params);
+					}
 					k = sim_params->intrvl;
-
 				}
 			}
 #ifdef PARALLEL
-			/*static FILE* fptr;
-			if(fptr == NULL){
-			char filename[9];
-			sprintf(filename, "%d.temp", rank);
-			fptr = fopen(filename,"w");
-			//fprintf(fptr,"#T: %f\n", 1000.0/(1.9858775*thermobeta)-273.15);
+			//uncomment this part if you want the energies of each replica
+			static FILE* fptr;
+			if (fptr == NULL) {
+				char filename[1024];
+				sprintf(filename, "%d.temp", rank);
+				fptr = fopen(filename, "w");
+				fprintf(fptr, "#T: %f\n", 1000.0 / (1.9858775*sim_params->thermobeta) - 273.15);
 			}
-			fprintf(fptr,"%f %f\n",thermobeta,totenergy()); */
+			fprintf(fptr, "%f %f\n", sim_params->thermobeta, totenergy(chain));
+
+			static FILE* fptr_pdb;
+			if (fptr_pdb == NULL) {
+				char filename_pdb[1024];
+				sprintf(filename_pdb, "%d.pdb", rank);
+				fptr_pdb = fopen(filename_pdb, "w");
+				fprintf(fptr_pdb, "#T: %f\n", 1000.0 / (1.9858775*sim_params->thermobeta) - 273.15);
+				double tttt = totenergy(chain);
+				pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), fptr_pdb, &tttt);
+			}
+			fprintf(fptr, "%f %f\n", sim_params->thermobeta, totenergy(chain));
+
 			if (sim_params->thermobeta != sim_params->beta1)
 				continue;
 #endif
-			//if (sim_params->protein_model.external_potential_type2 == 4) fprintf(stderr, "curr external energy  %g \n", extenergy(chain));
 			fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 			tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 		}
+		freemem_chain(chain2); free(chain2);
 	}
-
-	freemem_chain(chain2); free(chain2);
-	energy_matrix_print(chain, biasmap, sim_params);
 }
 
 char *read_options(int argc, char *argv[], simulation_params *sim_params)
@@ -677,6 +557,7 @@ char *read_options(int argc, char *argv[], simulation_params *sim_params)
 	int lowtemp;
 	double beta1 = 1.0, beta2 = 0.0; //, bstp = 1.0;
 	unsigned int intrvl = 16384;
+	unsigned int nswap_per_try = 16384;
 	int NS = 0; //1 = yes
 	int iter_max = 1000;
 	int num_NS_per_checkpoint = 0;
@@ -730,10 +611,11 @@ char *read_options(int argc, char *argv[], simulation_params *sim_params)
 			sim_params->keep_amplitude_fixed = keep_amplitude_fixed;
 			break;
 		case 'b':
-			sscanf(argv[i], "%lf-%lf:%u", &beta1, &beta2, &intrvl);
+			sscanf(argv[i], "%lf-%lf:%u,%u", &beta1, &beta2, &intrvl, &nswap_per_try);
 			sim_params->beta1 = beta1;
 			sim_params->beta2 = beta2;
 			sim_params->intrvl = intrvl;
+			sim_params->nswap_per_try = nswap_per_try;
 			break;
 		case 'c':
 			sscanf(argv[i],"%lf",&thermobeta);
@@ -1033,55 +915,70 @@ int main(int argc, char *argv[])
 
 		} else { /* reading in for an MC simulation */
 #ifdef PARALLEL
-			fprintf(stderr,"INFO: Attempting a parallel tempering simulation.\n");
+			fprintf(stderr, "INFO: Attempting a parallel tempering simulation.\n");
 			/* parallel tempering: upto max(rank) initial configs */
 			int i;
-			for (i = 0; pdbin(chain,&sim_params,sim_params.infile) != EOF && i < rank; i++)  readin = 1;
-			if (readin == 0)  fprintf(stderr,"WARNING! Rank %d did not read in a PDB\n",rank);
-        
+			int retv;
+			for (i = 0; (retv = pdbin(chain, &sim_params, sim_params.infile)) != EOF && i < rank; i++)  readin = 1;
+			if (!(retv > 0) && readin == 0)  fprintf(stderr, "WARNING! Rank %d did not read in a PDB\n", rank);
+			else readin = 1; //fix rank 0 (readin==0) warning
+
 #else
-			/* serial MC:  only last entry */
-			fprintf(stderr,"INFO: Attempting a serial MC simulation.\n");
+				 /* serial MC:  only last entry */
+			fprintf(stderr, "INFO: Attempting a serial MC simulation.\n");
 			unsigned int i;
 
-			for (i = 1; pdbin(chain,&sim_params,sim_params.infile) != EOF; i++);
-			if (i>2) fprintf(stderr,"WARNING! First %d entries in the input PDB will be ignored, only using last one for the MC simulation.\n",i-1);
-			if (i==1) {
+			for (i = 1; pdbin(chain, &sim_params, sim_params.infile) != EOF; i++);
+			if (i>2) fprintf(stderr, "WARNING! First %d entries in the input PDB will be ignored, only using last one for the MC simulation.\n", i - 1);
+			if (i == 1) {
 				stop("ERROR! EOF while reading in from input PDB file.");
 			}
-			readin=1;
+			readin = 1;
 #endif
 
-		/* project the peptide onto the CRANKITE model and do the initial tests for serial MC */
+			/* project the peptide onto the CRANKITE model and do the initial tests for serial MC */
 			if (readin) {
-				if(sim_params.protein_model.fixit) fixpeptide(chain->aa, chain->NAA, &(sim_params.protein_model));
+				if (sim_params.protein_model.fixit) fixpeptide(chain->aa, chain->NAA, &(sim_params.protein_model));
 				chkpeptide(chain->aa, chain->NAA, &(sim_params.protein_model));
-				mark_fixed_aa_from_file(chain,&sim_params);
-				mark_constrained_aa_from_file(chain,&sim_params);
+				mark_fixed_aa_from_file(chain, &sim_params);
+				mark_constrained_aa_from_file(chain, &sim_params);
 			}
-			update_sim_params_from_chain(chain,&sim_params); // updating NAA and seq
-			//fprintf(stderr,"Updated sim_params->seq: %s\n",sim_params.seq); //this also has a starting A which is not part of the polypeptide
+			update_sim_params_from_chain(chain, &sim_params); // updating NAA and seq
+															  //fprintf(stderr,"Updated sim_params->seq: %s\n",sim_params.seq); //this also has a starting A which is not part of the polypeptide
+
 #ifndef PARALLEL
-			fprintf(sim_params.outfile,"-+- PLAY BLOCK %5d -+-\n", --i);
-			biasmap_initialise(chain,biasmap,&(sim_params.protein_model));
-			energy_matrix_calculate(chain,biasmap,&(sim_params.protein_model));
-			tests(chain,biasmap,sim_params.tmask, &sim_params, 0x1, NULL );
+			fprintf(sim_params.outfile, "-+- PLAY BLOCK %5d -+-\n", --i);
+			/* initialise the biasmap and energy matrix before testing in case some pre-initialisation tests need energies */
+			biasmap_initialise(chain, biasmap, &(sim_params.protein_model));
+			energy_matrix_calculate(chain, biasmap, &(sim_params.protein_model));
+			tests(chain, biasmap, sim_params.tmask, &sim_params, 0x1, NULL);
 #endif
-			initialize(chain,chaint,&sim_params); // peptide modification
-			/* allocate energy matrix and read in biasmap */
-			biasmap_initialise(chain,biasmap,&(sim_params.protein_model));
-			energy_matrix_calculate(chain,biasmap,&(sim_params.protein_model));
+			initialize(chain, chaint, &sim_params); // peptide modification
+													/* allocate energy matrix and read in biasmap */
+			biasmap_initialise(chain, biasmap, &(sim_params.protein_model));
+			energy_matrix_calculate(chain, biasmap, &(sim_params.protein_model));
 #ifndef PARALLEL
 			/* initial test */
-			tests(chain,biasmap,sim_params.tmask, &sim_params, 0x10, NULL );
+			tests(chain, biasmap, sim_params.tmask, &sim_params, 0x10, NULL);
 #endif
-		}
-	  }
+		   }
+	   }
 
 
 
 	/* MC */
 	simulate(chain,chaint,biasmap,&sim_params);
+	/* print last snapshots for restart */
+#ifdef PARALLEL
+	FILE* fptr1;
+	char filename1[1024];
+	sprintf(filename1, "%d_last.pdb", rank);
+	fptr1 = fopen(filename1, "w");
+	pdbprint(chain->aa, chain->NAA, &(sim_params.protein_model), fptr1, NULL);
+	fclose(fptr1);
+#endif
+
+
 	finalize(chain,chaint,biasmap); //free memory allocated in initialize
      
 	} else { /* Nested Sampling, parallel or serial */
@@ -1097,18 +994,6 @@ int main(int argc, char *argv[])
 	if (rank == 0);
 #endif
 
-	/*
-	free(Cmapvalue);
-	free(CAmapvalue);
-	free(NAmapvalue);
-	free(Smapvalue);
-	free(Hmapvalue);
-	free(Omapvalue);
-	free(Nmapvalue);
-	free(emapvalue);
-	free(dmapvalue);
-	fprintf(stderr, "best target energy %g\n", targetBest);
-	*/
 
 	for (int atype = 0; atype < sizeof(gridmapvalues) / sizeof(gridmapvalues)[0]; atype++)
 		free(gridmapvalues[atype]);

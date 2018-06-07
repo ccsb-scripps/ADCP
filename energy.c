@@ -326,12 +326,12 @@ void biasmap_initialise(Chain *chain, Biasmap *biasmap, model_params *mod_params
 		the one-letter amino acid codes are used in the diagonal, and there was a problem parsing N or I (on francesca) */
 	int lopsided = 0;
 	for (i = 1; i < chain->NAA; i++) {
-	    for (j = 1; j < i; j++) {
+		for (j = 1; j < i; j++) {
 			if ((biasmap)->distb[i * (biasmap)->NAA + j] != (biasmap)->distb[j * (biasmap)->NAA + i]) {
 				fprintf(stderr, "Lopsided bias: %d %d valued %g %g\n", i, j, (biasmap)->distb[i * (biasmap)->NAA + j], (biasmap)->distb[j * (biasmap)->NAA + i]);
 				lopsided = 1;
 			}
-	    }
+		}
 	}
 	if (lopsided) stop("Lopsided bias map!");
 
@@ -1569,7 +1569,7 @@ double external(AA *a, model_params *mod_params, vector molcom)
 	add(com, com, a->c);
 	scale(com,1.0/3.0, com);
 
-	//fprintf(stderr, "calcuaaalating constraint on amino acid %d", a->num);
+	//fprintf(stderr, "calculating constraint on amino acid %d", a->num);
 	/* constraining to the z axis using a harmonic potential
 		E =	k * ( sqrt(x^2+y^2) - r0 )^2	if x^2+y^2 > r0^2,
 			0				otherwise.  */
@@ -1586,11 +1586,11 @@ double external(AA *a, model_params *mod_params, vector molcom)
 		}
 
 	} else if (mod_params->external_potential_type == 5) {
-		// GARY HHHHACCKKKK AutoDock Grid Energy
+		// AutoDock Grid Energy
 		//fprintf(stderr, "restype %c \n", a->id);
 		double exC = 0.0, exCa = 0.0, exN = 0.0, exO = 0.0, exCb = 0.0, exH = 0.0;
 
-		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
+		/* element types are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
 
 		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", a->c[0], a->c[1], a->c[2], exO);
 		exC = gridenergy(a->c[0], a->c[1], a->c[2], 0);
@@ -1615,6 +1615,7 @@ double external(AA *a, model_params *mod_params, vector molcom)
 
 		
 		double sideChainEnergy = 0.0;
+		/*Here is a hack, external_r0[0] term 1.x indicate to reconstruct full-atom sidechain score grid energy */
 		if ((int) mod_params->external_r0[0] == 1.0) {
 			//fprintf(stderr, "calculate side chain external energy\n");
 			switch (a->id)
@@ -1678,7 +1679,7 @@ double external(AA *a, model_params *mod_params, vector molcom)
 			}
 		}
 		erg += sideChainEnergy;
-		// scale down kcal/mol to RT!!!
+		// AD energy is in kcal/mol, scale down kcal/mol to RT!
 		erg = erg / 0.59219;
 	} else if (mod_params->external_potential_type == 2) {
 		stop("unimplemented type 2");
@@ -1978,30 +1979,9 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
 	//ee = 10.0;
 	ans += ee;
 	test_external += ee;
-	//fprintf(stderr, "look at me1\n");
 	ans += external2(((chain->aa) + i), mod_params, mol_com);
   }
 
-  // Gary Hack cyclic peptides
-  //if (mod_params->external_potential_type2 == 4) {
-  //  // for first evaluation
-  //  if (start == 0 && end == 0) {
-  //	  ans += cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
-  //  }
-  //  // if motion does not change the C-N bond, use starting conformation
-  //  else if (start > 1 && end < chain->NAA - 1) {
-  //	  ans += cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
-  //  }
-  //  // if motion moves the C-N bond, use conformation after the motion
-  //  else {
-  //	  ans += cyclic_energy((chaint->aat) + 1, (chaint->aat) + chain->NAA - 1, 0);
-  //  }
-  //}
-
-
-
-  //fprintf(stderr,"global_energy %g: best external energy %g\n", ans, externalBest);
-  //fprintf(stderr, "global_energy: external energyss");
   return ans;
 
 }

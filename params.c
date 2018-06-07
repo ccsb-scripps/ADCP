@@ -55,6 +55,7 @@ void param_initialise(simulation_params *this) {
   this->beta2 = 0;
   this->bstp = 1;
   this->intrvl = 16384;
+  this->nswap_per_try = 16384;
   this->energy_gradient = malloc(36*sizeof(double));
   this->energy_probe_1_this = malloc(36*sizeof(double));
   this->energy_probe_1_last = malloc(36*sizeof(double));
@@ -146,6 +147,7 @@ void param_finalise(simulation_params *this) {
   this->beta2 = 0;
   this->bstp = 0;
   this->intrvl = 0;
+  this->nswap_per_try = 0;
   if (this->energy_gradient) free(this->energy_gradient);
   if (this->energy_probe_1_calc) free(this->energy_probe_1_calc);
   if (this->energy_probe_1_this) free(this->energy_probe_1_this);
@@ -1233,7 +1235,6 @@ void model_param_read(char *prm, /* input line */
 	int zdir = 0;
 	char constraint_file[256];
 	k=sscanf(prm,"external=%d",&(this->external_potential_type));
-	//fprintf(stderr, "haha found external potential parameters\n");
 	if (k>0) {
 		fprintf(stderr,"found external potential parameters %d \n", k);
 		int l;
@@ -1730,6 +1731,7 @@ void param_print(simulation_params this, FILE *outfile) {
   fprintf(outfile,"beta2 %g\n",this.beta2);
   fprintf(outfile,"bstp %g\n",this.bstp);
   fprintf(outfile,"intrvl %d\n",this.intrvl);
+  fprintf(outfile, "nswap_per_try %d\n", this.nswap_per_try);
   /* nested sampling */
   fprintf(outfile,"--NESTED SAMPLING--\n");
   fprintf(outfile,"do nested sampling? %d\n",this.NS);

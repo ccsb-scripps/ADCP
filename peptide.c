@@ -883,7 +883,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	triplet helix, strand;
 
 	matrix t = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t1 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
+
 	int randx = 0, randy = 0, randz = 0;
 	//if external AD grid choose the 8 corners of the box as starting position
 	if ((sim_params->protein_model).external_potential_type == 5) {
@@ -891,23 +891,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 		randx = (round((double)rand() / RAND_MAX) * 2 - 1);
 		randy = (round((double)rand() / RAND_MAX) * 2 - 1);
 		randz = (round((double)rand() / RAND_MAX) * 2 - 1);
-
-		//matrix t = { { randx, 0., 0. },{0., randy, 0. },{ 0., 0., randz }};
 	}
-
-
-
-	//matrix t1 = { {1., 0., 0.}, {0., 1., 0.}, {0., 0., 1.} };
-	//matrix t2 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t3 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t4 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t5 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t6 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t7 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-	//matrix t8 = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
-
-	
-
 	/* let's get rid of the separator, '_'
 	   and also take notes of which chain the amino acid is in */
 	fprintf(stderr,"Building protein from sequence: %s.\n",str);
@@ -981,7 +965,6 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 		}
 
 		transset(t, chain->xaa[i]);
-		fixtriplet(t);
 		/* fix accumulating errors every 64 residues */
 		if ((i & 0x3F) == 0)
 			fixtriplet(t);

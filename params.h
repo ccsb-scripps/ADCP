@@ -308,6 +308,7 @@ typedef struct {
   double beta2;
   double bstp;
   unsigned int intrvl;
+  unsigned int nswap_per_try;
 
   /* various tests */
   double *energy_gradient;
