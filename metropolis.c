@@ -65,10 +65,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 			chaint->Ergt(i, j) = q;
 			if (i != 1 || j != chain->NAA - 1) {
-				loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
+				//loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
+				loss += (chain->Erg(i, j) - q);
 			}
 			else {
-				loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
+				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
+				loss += (chain->Erg(i, j) - q);
 			}
 				
 		}
@@ -105,8 +107,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 
 
-	loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
-	
+	//loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
+	loss = loss + externalloss;
 
 	
 	

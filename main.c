@@ -220,7 +220,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		double heatFactor = 0.5; // starting temp while annealing
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
 		int annealSteps = 10000;
-		int swapAneal = 0; //swapping while annealing, 0 false, 1 true.
+		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
 
 		//create swap pool, last element is with the best energy
 		for (int i = 0; i < swapLength + 1; i++) {
@@ -994,7 +994,7 @@ int main(int argc, char *argv[])
 	if (rank == 0);
 #endif
 
-
+	fprintf(stderr, "best target energy %g\n", targetBest);
 	for (int atype = 0; atype < sizeof(gridmapvalues) / sizeof(gridmapvalues)[0]; atype++)
 		free(gridmapvalues[atype]);
 	fprintf(stderr,"The program has successfully finished in %d seconds. :)  Bye-bye!\n", time(NULL)- startTime);
