@@ -411,7 +411,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//sim_params->protein_model.external_k[0] = external_k;
 					//bestIndex = i*sim_params->pace + j;
 				}
-				else if (currIndex - lastIndex > swapGoodSteps) {
+				else if (currIndex - lastIndex > swapGoodSteps && rand()%10000<100) {
 					if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
 
 						swapInd = rand() % (swapLength + 1);
@@ -427,7 +427,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 
 			}
-			else if (currIndex - lastIndex > swapBadSteps) {
+			else if (currIndex - lastIndex > swapBadSteps && rand()%10000<1000 ) {
 				if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
 					swapInd = rand() % (swapLength + 1);
                                         //energy_matrix_print(chain, biasmap, sim_params);

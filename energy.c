@@ -356,9 +356,9 @@ double lowerGridEnergy(double E) {
 	//	//return log10f(E) + 9;
 	//	return log(E) + 1.71828;
 	//}
-	if (E > 5) {
+	if (E > 1) {
 		//return log10f(E) + 9;
-		return log(E) + 5;
+		return log(E) + 1;
 	}
 	return E;
 }
