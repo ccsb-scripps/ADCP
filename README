@@ -1,0 +1,148 @@
+			CRANKITE
+	A Fast Polypeptide Backbone Conformation Sampler
+
+CRANKITE is a suite of programs for simulating backbone conformations of
+polypeptides and proteins. The core of the suite is an efficient Metropolis
+Monte Carlo sampler of backbone conformations in continuous three-dimensional
+space in atomic details. In contrast to other programs relying on local
+Metropolis moves in the space of dihedral angles, the sampler utilizes local
+crankshaft rotations of rigid peptide bonds in Cartesian case. The sampler
+allows fast simulation and analysis of secondary structure formation and
+conformational changes for proteins of average length.
+
+
+1. Compilation and Usage
+
+The package provides Makefile recognized by GNU make (or gmake), which builds
+the suite. So fire up "make"! Most programs in the suite are controlled through
+various options given on the command line. Invalid options (or the valid option
+"-h") trigger the output of usage notes. The following programs are provided in
+the suite from most to least important.
+
+peptide
+	The Metropolis polypeptide backbone conformation sampler. A very short
+	simulation can be run by using a command like
+
+		./peptide -r 1000x25 -t 201 d1ctf__.pdb
+
+	This will read the initial conformation from file d1ctf__.pdb, perform
+	25,000 Metropolis moves, while recording a contact map and a snapshot
+	conformation every 1000 steps. The output will have 25 contact maps and
+	25 snapshots. To get help with more options one can use "./peptide -h".
+
+peptmpi
+	The same as peptide, but compiled for parallel-tempered simulations
+	using MPI.
+
+lipa
+	Converts dihedrals to a 3D-structure in PDB format. Each input line
+	should start from a 1-letter residue id and dihedral angles phi and psi
+	separated by spaces, e.g. "Q -57 -47". Optionally, the valence angle
+	tau and the cis/trans angle omega can be given in the fourth and fifth
+	positions. The sixth optional angle is interpreted as a chi_1 dihedral
+	to add an gamma side chain atom. 
+	
+	The omitted phi and psi angles are assigned random values appropriate
+	for polypeptides to minimize clashes. This feature can be used to
+	create a random coil conformation by providing a sole residue id in
+	each line of input.
+
+	This program is an approximate inverse of rama and one can pipe rama
+	output through lipa to recreate	the original structure. This inversion
+	is not ideal, because it assumes reasonable but not precise values for
+	ignored and omitted bond lengths angles. This program can be used to
+	create an arbitrary initial conformation for "peptide". 
+
+rama
+	Calculates backbone dihedrals for a polypeptide in PDB format. In
+	addition, valence geometry of each CA atom is characterized in terms of
+	an N-CA-C valence angle tau and a normalized solid angle formed by
+	three bonds with heavy atoms. The solid angle is positive for L-amino
+	acids and negative for D-amino acids. Side-chain dihedral angles
+	chi_1 are also reported. Other calculated characteristics of local
+	polypeptide conformation include CA-CA and CB-CB distances between
+	adjacent residues, pseudo-dihedral angles CB-CA-CA-CB, etc.
+
+coma
+	Calculates a contact map for a protein structure in a PDB file.
+	Contacts are defined by a cut-off distance between CA or CB atoms. Some
+	of this functionality is also integrated in "peptide". The program can
+	also produce a distance matrix.
+
+befa
+	Produces a mean structure with B-factors for the multiple models in an
+	NMR-style PDB file. Calculation of B-factors for a simulation
+	trajectory is reliable only if the trajectory is very short (less than
+	100 steps per residue).
+
+stats
+	Basic statistical pipe tool to calculate means, standard deviations,
+	extreme values, and statistical inefficiencies for a stream of data.
+
+merg.sh
+	Merges and sorts output files that are produced during a Sun MPI
+	parallel-tempered run using "mprun -B". The files to be merged should
+	be listed on the command line. The script and the merg executable are
+	useful only on Sun clusters.
+
+cdlearn.sh
+	An example script to set up Contrastive Divergence learning (see below)
+	from a dataset of PDB structures. The script uses 2 parameters: the
+	number of available cluster nodes and a file with the list of PDB id's.
+	This script distributes tasks over cluster nodes using PBS (Portable
+	Batch System). Each node receives a PBS job diverge.pbs.
+
+viewer.sh
+	PDB viewer produces a stereo pair in a printable PostScript format. It
+	uses a PDB file name as a command line parameter. PDB files are parsed
+	by the oops executable that is called from the script.
+
+By default, all the programs read data from the standard input (stdin) and
+write to the standard output (stdout), so that one can use them in a pipeline.
+If a file name is given on the command line, the input is redirected from this
+file. The option "-o file_name" allows one to redirect the output to a file.
+This is an example of a pipeline that involves most programs in the suite
+
+	./rama d1ctf__.pdb | ./lipa | ./peptide -r 500x10 | ./befa | ./coma
+
+Here, rama calculates dihedral angles for d1ctf__ and passes them to lipa to
+recreate a 3d structure, which is passed to peptide for a short simulation
+producing 10 snapshots, then befa averages them, and finally coma produces a
+contact map for the average structure.
+
+We implemented an alternative way of setting initial conformation for
+"peptide". One can enter a sequence of residues directly on the command line,
+e.g.,
+
+	./peptide -r 4096x200 ABCDEFGHabcdefgh
+
+This will run simulations on the 16-residue polypeptide, starting from the
+first 8 residues in alpha-helical state and the last 8 residues in beta-strand
+conformation.
+
+The default force-field used by peptide includes hard-core van der Waals
+repulsions and square-well interpeptide hydrogen bonding. One can also specify
+Go-type interactions between side-chains by providing a regularized contact
+map. For example,
+
+	./peptide -r 4096x200 -p _B=beta-16.in WHATISMYSMEARARM
+
+where the file beta-16.in (provided in the package) contains the regularized
+contact map corresponding to 16-residue beta-hairpin. The above example starts
+simulations from alpha-helical conformation and turns it into a beta-hairpin in
+less than 15 seconds on a 3.2 GHz Pentium D system.
+
+The peptide's option "-p" is perhaps the most powerful option, which allows one
+to control many parameters of the program, including force-field constants.
+This option is intended to be customizable and flexible. To learn more about
+this option in the current version, we would like to refer the reader to the
+source code.
+
+
+2. Conclusion
+
+CRANKITE was created as an extremely light-weight suite not overburdened with
+excessive command line options and configuration files. While usable as is,
+to unlock its full power, one will need to familiarize oneself with CRANKITE
+internals. CRANKITE source code is available without any warranty under
+the terms of GNU General Public License version 2.

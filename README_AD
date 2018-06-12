@@ -1,0 +1,24 @@
+folding with AutoDock potential:
+
+example usage:
+
+peptide -r 10000x3000 -t 2 apgvgvapgvgv -p Bias=NULL,external=5,con8,2,1.0,external2=4,con8,2,1.0,Opt=1,0.5,0.5,-0.5 -o output.pdb
+
+external=5,con8,2,1.0
+This calls the autodock grid maps. It will look for rigidReceptor.*.map. 
+con8 is the a file indicating the residues to score, usually just all residue number.
+2 is a thermo factor that is an addition to the original temperature.
+1.0 calls the reconstruction of side chain during the scoring.
+
+external2=4,con8,2,1.0 
+This calls the cyclic procedure to create an artificial peptide bond between first and last residue.
+con8 is meaningless right now, but can be used to indicate the location of the cyclic bond in the future.
+2 is the thermo factor, and it will overwrite the previous one in external.
+1.0 is meaningless right now, but can be used to flag the cyclic bond type, etc.
+
+Opt=1,0.5,0.5,-0.5
+This calls the optimizing/docking procedure. Opt=0 is to use regular MC.
+The following 3 numbers is the weight of the target energy in the optimizing procedure.
+In the example above:
+targetE = 0.5 * totalE + 0.5 * externalE + (-0.5) * firstlastE
+Note that totalE includes internalE, externalE and firstlastE. So the above weights scale down the internal energy by a factor of 2 and remove the energy between the first and last residues. The default weights are set to be 1, 0, 0.
