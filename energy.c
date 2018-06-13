@@ -1323,7 +1323,7 @@ void normalizedVector(float *a, float *b, float *v) {
 	for (i = 0; i<3; i++) v[i] = v[i] * n;
 }
 
-float scoreSideChain(int nbRot, int nbAtoms, int *atypes, double coords[nbRot][nbAtoms][3], AA *a)
+float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  double coords[nbRot][nbAtoms][3], AA *a)
 {
 	int i, j;
 	float n; /* used to normalized vectors */
@@ -1379,7 +1379,7 @@ float scoreSideChain(int nbRot, int nbAtoms, int *atypes, double coords[nbRot][n
 			tc[i][j][1] = mat[1][0] * coords[i][j][0] + mat[1][1] * coords[i][j][1] + mat[1][2] * coords[i][j][2] + mat[1][3];
 			tc[i][j][2] = mat[2][0] * coords[i][j][0] + mat[2][1] * coords[i][j][1] + mat[2][2] * coords[i][j][2] + mat[2][3];
 			//fprintf(stderr, "test type %i\n", atypes[i]);
-			score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j]);
+			score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j], charges[j]);
 			//fprintf(stderr, "test nbROT %i type %i score %g \n", i, atypes[j], score);
 		}
 		if (score < bestScore) {
@@ -1394,11 +1394,10 @@ float scoreSideChain(int nbRot, int nbAtoms, int *atypes, double coords[nbRot][n
 
 }
 
-double gridenergy(double X, double Y, double Z, int i) {
+double gridenergy(double X, double Y, double Z, int i, double charge) {
 	//fprintf(stderr, "X %g Y %g Z %g charge \n", X, Y, Z, i);
 	double erg = 0.0;
-	double charge = 0.0;
-	if (X != X || Y != Y || Z != Z) return 100;
+	
 	double exactGridX = (X - centerX) / spacing + (NX - 1) / 2;
 	double exactGridY = (Y - centerY) / spacing + (NY - 1) / 2;
 	double exactGridZ = (Z - centerZ) / spacing + (NZ - 1) / 2;
@@ -1410,41 +1409,9 @@ double gridenergy(double X, double Y, double Z, int i) {
 	//fprintf(stderr, "type %i charge %g \n", i, charge);
 	/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
 
-	switch (i)
-	{
-		case 0:
-			//mapvalue = Cmapvalue;
-			charge = 0.176;
-			break;
-		case 1:
-			//mapvalue = Nmapvalue;
-			charge = -0.346;
-			break;
-		case 2:
-			//mapvalue = Omapvalue;
-			charge = -0.271;
-			break;
-		case 3:
-			//mapvalue = Hmapvalue;
-			charge = 0.163;
-			break;
-		case 4:
-			//mapvalue = Smapvalue;
-			charge = -0.173;
-			break;
-		case 5:
-			//mapvalue = CAmapvalue;
-			charge = 0;
-			break;
-		case 6:
-			//mapvalue = NAmapvalue;
-			charge = -0.247;
-			break;
-		default:
-			break;
-	}
+
 	double abscharge = (charge >= 0. ? charge : -charge);
-        //double abscharge = 0.;
+        //charge = 0.;
 	int lowGridX = (int)exactGridX,
 		lowGridY = (int)exactGridY,
 		lowGridZ = (int)exactGridZ;
@@ -1592,20 +1559,46 @@ double external(AA *a, model_params *mod_params, vector molcom)
 		double exC = 0.0, exCa = 0.0, exN = 0.0, exO = 0.0, exCb = 0.0, exH = 0.0;
 
 		/* element types are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
-
+		double CCharge = 0.241, CaCharge = 0.186, NCharge = -0.346, OCharge = -0.271, CbCharge = 0.050, HCharge = 0.163;
 		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", a->c[0], a->c[1], a->c[2], exO);
-		exC = gridenergy(a->c[0], a->c[1], a->c[2], 0);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		exCa = gridenergy(a->ca[0], a->ca[1], a->ca[2], 0);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		if (a->id != 'G') {
-			exCb = gridenergy(a->cb[0], a->cb[1], a->cb[2], 0);
+
+		if (a->id == 'G') {
+			CaCharge = 0.218;
 		}
-		exH = gridenergy(a->h[0], a->h[1], a->h[2], 3);
+		else if (a->id == 'S') {
+			CaCharge = 0.219;
+			CbCharge = 0.199;
+		}
+		else if (a->id == 'P') {
+			CaCharge = 0.165;
+			CbCharge = 0.034;
+		}
+		else if (a->id == 'C') {
+			CbCharge = 0.120;
+		}
+		else if (a->id == 'T' || a->id == 'D' || a->id == 'N') {
+			CbCharge = 0.146;
+		}
+
+		if (a->num==1) {
+			HCharge = 0.275;
+			CCharge = 0.484;
+			CaCharge = CaCharge + 0.2;
+		}
+
+		if (a->id != 'P') {
+			exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
+		}
+		exC = gridenergy(a->c[0], a->c[1], a->c[2], 0, CCharge);
 		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		exN = gridenergy(a->n[0], a->n[1], a->n[2], 1);
+		exCa = gridenergy(a->ca[0], a->ca[1], a->ca[2], 0, CaCharge);
 		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		exO = gridenergy(a->o[0], a->o[1], a->o[2], 2);
+		exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
+		exCb = gridenergy(a->cb[0], a->cb[1], a->cb[2], 0, CbCharge);
+		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+		exN = gridenergy(a->n[0], a->n[1], a->n[2], 1, NCharge);
+		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+		exO = gridenergy(a->o[0], a->o[1], a->o[2], 2, OCharge);
 		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
 		erg = (exC + exCa + exH + exN + exO + exCb);
 		//fprintf(stderr, "bb Energy %g \n", erg);
@@ -1616,64 +1609,70 @@ double external(AA *a, model_params *mod_params, vector molcom)
 
 		
 		double sideChainEnergy = 0.0;
+
+
 		/*Here is a hack, external_r0[0] term 1.x indicate to reconstruct full-atom sidechain score grid energy */
 		if ((int) mod_params->external_r0[0] == 1.0) {
 			//fprintf(stderr, "calculate side chain external energy\n");
 			switch (a->id)
 			{
 			case 'I':
-				sideChainEnergy = scoreSideChain(ILE.nbRot, ILE.nbAtoms, ILE.atypes, ILE.coords, a);
+				sideChainEnergy = scoreSideChain(ILE.nbRot, ILE.nbAtoms, ILE.charges, ILE.atypes, ILE.coords, a);
 				break;
 			case 'L':
-				sideChainEnergy = scoreSideChain(LEU.nbRot, LEU.nbAtoms, LEU.atypes, LEU.coords, a);
+				sideChainEnergy = scoreSideChain(LEU.nbRot, LEU.nbAtoms, LEU.charges, LEU.atypes, LEU.coords, a);
 				break;
 			case 'P':
-				sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.atypes, PRO.coords, a);
+				sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.charges, PRO.atypes, PRO.coords, a);
 				break;
 			case 'V':
-				sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.atypes, VAL.coords, a);
+				//sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a);
+				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
 				break;
 			case 'F':
-				sideChainEnergy = scoreSideChain(PHE.nbRot, PHE.nbAtoms, PHE.atypes, PHE.coords, a);
+				sideChainEnergy = scoreSideChain(PHE.nbRot, PHE.nbAtoms, PHE.charges, PHE.atypes, PHE.coords, a);
 				break;
 			case 'W':
-				sideChainEnergy = scoreSideChain(TRP.nbRot, TRP.nbAtoms, TRP.atypes, TRP.coords, a);
+				sideChainEnergy = scoreSideChain(TRP.nbRot, TRP.nbAtoms, TRP.charges, TRP.atypes, TRP.coords, a);
 				break;
 			case 'Y':
-				sideChainEnergy = scoreSideChain(TYR.nbRot, TYR.nbAtoms, TYR.atypes, TYR.coords, a);
+				sideChainEnergy = scoreSideChain(TYR.nbRot, TYR.nbAtoms, TYR.charges, TYR.atypes, TYR.coords, a);
 				break;
 			case 'D':
-				sideChainEnergy = scoreSideChain(ASP.nbRot, ASP.nbAtoms, ASP.atypes, ASP.coords, a);
+				sideChainEnergy = scoreSideChain(ASP.nbRot, ASP.nbAtoms, ASP.charges, ASP.atypes, ASP.coords, a);
 				break;
 			case 'E':
-				sideChainEnergy = scoreSideChain(GLU.nbRot, GLU.nbAtoms, GLU.atypes, GLU.coords, a);
+				sideChainEnergy = scoreSideChain(GLU.nbRot, GLU.nbAtoms, GLU.charges, GLU.atypes, GLU.coords, a);
 				break;
 			case 'R':
-				sideChainEnergy = scoreSideChain(ARG.nbRot, ARG.nbAtoms, ARG.atypes, ARG.coords, a);
+				sideChainEnergy = scoreSideChain(ARG.nbRot, ARG.nbAtoms, ARG.charges, ARG.atypes, ARG.coords, a);
 				break;
 			case 'H':
-				sideChainEnergy = scoreSideChain(HIS.nbRot, HIS.nbAtoms, HIS.atypes, HIS.coords, a);
+				sideChainEnergy = scoreSideChain(HIS.nbRot, HIS.nbAtoms, HIS.charges, HIS.atypes, HIS.coords, a);
 				break;
 			case 'K':
-				sideChainEnergy = scoreSideChain(LYS.nbRot, LYS.nbAtoms, LYS.atypes, LYS.coords, a);
+				sideChainEnergy = scoreSideChain(LYS.nbRot, LYS.nbAtoms, LYS.charges, LYS.atypes, LYS.coords, a);
 				break;
 			case 'S':
-				sideChainEnergy = scoreSideChain(SER.nbRot, SER.nbAtoms, SER.atypes, SER.coords, a);
+				//sideChainEnergy = scoreSideChain(SER.nbRot, SER.nbAtoms, SER.charges, SER.atypes, SER.coords, a);
+				sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 2, -0.398);
 				break;
 			case 'T':
-				sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.atypes, THR.coords, a);
+				//sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a);
+				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
 				break;
 			case 'C':
-				sideChainEnergy = scoreSideChain(CYS.nbRot, CYS.nbAtoms, CYS.atypes, CYS.coords, a);
+				//sideChainEnergy = scoreSideChain(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a);
+				sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
 				break;
 			case 'M':
-				sideChainEnergy = scoreSideChain(MET.nbRot, MET.nbAtoms, MET.atypes, MET.coords, a);
+				sideChainEnergy = scoreSideChain(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a);
 				break;
 			case 'N':
-				sideChainEnergy = scoreSideChain(ASN.nbRot, ASN.nbAtoms, ASN.atypes, ASN.coords, a);
+				sideChainEnergy = scoreSideChain(ASN.nbRot, ASN.nbAtoms, ASN.charges, ASN.atypes, ASN.coords, a);
 				break;
 			case 'Q':
-				sideChainEnergy = scoreSideChain(GLN.nbRot, GLN.nbAtoms, GLN.atypes, GLN.coords, a);
+				sideChainEnergy = scoreSideChain(GLN.nbRot, GLN.nbAtoms, GLN.charges, GLN.atypes, GLN.coords, a);
 				break;
 			default:
 				break;

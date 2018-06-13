@@ -36,12 +36,12 @@ void gridbox_initialise();
 double *gridmapvalues[9];
 void gridmap_initialise(char *, int);
 
-double gridenergy(double X, double Y, double Z, int i);
+double gridenergy(double X, double Y, double Z, int i, double charge);
 
 void vectorProduct(float *a, float *b, float *c);
 void normalizedVector(float *a, float *b, float *v);
 
-float scoreSideChain(int nbRot, int nbAtoms, int *aTypes, double coords[nbRot][nbAtoms][3], AA *a);
+float scoreSideChain(int nbRot, int nbAtoms, double *acharges, int *aTypes,  double coords[nbRot][nbAtoms][3], AA *a);
 
 int getindex(int x, int y, int z);
 

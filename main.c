@@ -182,24 +182,24 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 	chain2->aa = NULL; chain2->xaa = NULL; chain2->erg = NULL; chain2->xaa_prev = NULL;
 	allocmem_chain(chain2,chain->NAA,chain->Nchains);
 
-	energy_matrix_print(chain, biasmap, sim_params);
+	//energy_matrix_print(chain, biasmap, sim_params);
 	if (sim_params->protein_model.opt == 1) {
 		targetBest = 99999.;
 		double targetBestTemp = targetBest;
 		//double targetBestPrev = targetBest;
 		double currTargetEnergy = 99999.;
 		double lastTargetEnergy = 9999.;
-		//Index for last event
-		int lastIndex = 0;
+		
+		int lastIndex = 0; //Index for last event
 
-		int resetIndex = 0;
+		int resetIndex = 0; //Index for last annealing reset
 
-		int bestIndex = 0;
+		int bestIndex = 0; //Index for last best energy found
 
 		int stopSignal = 0;
 		int swapInd = 0;
 		int swapInd2 = 0;
-		int swapLength = 10;
+		int swapLength = 10; //size of swapping pool
 		int inCache = 0;
 		int ind = 0;
 		int currIndex = 0;
@@ -211,8 +211,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		Chain* swapChains[swapLength];
 
 		/*optimizing parameters*/
-		int noImprovHeatSteps = 1000000;
-		int noImprovStopSteps = 40000000;
+		int noImprovHeatSteps = 1000000; 
+		int noImprovStopSteps = 20000000;
 		int swapBadSteps = 200000;
 		int swapGoodSteps = 200000;
 		double goodEnergyDiff = 5.0;
@@ -221,8 +221,11 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
 		int annealSteps = 10000;
 		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
+		int swapGoodProb = 100; //chance of swapping a good pose after swapGoodSteps, out of 10000
+		int swapBadProb = 1000; //chance of swapping a bad pose after swapBadSteps, out of 10000
 
-		//create swap pool, last element is with the best energy
+
+		//initialize swapping pool, last element is with the best energy
 		for (int i = 0; i < swapLength + 1; i++) {
 			swapChains[i] = (Chain *)malloc(sizeof(Chain));
 			swapChains[i]->aa = NULL; swapChains[i]->xaa = NULL; swapChains[i]->erg = NULL; swapChains[i]->xaa_prev = NULL;
@@ -230,6 +233,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			copybetween(swapChains[i], chain);
 			swapEnergy[i] = 9999.;
 		}
+		//hack, external2_k overwrite external_k
 		if (sim_params->protein_model.external_potential_type2 == 4) sim_params->protein_model.external_k[0] = sim_params->protein_model.external_k2[0];
 		double external_k = sim_params->protein_model.external_k[0];
         sim_params->protein_model.external_k[0] = external_k * heatFactor;
@@ -239,7 +243,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			targetBestTemp = targetBest;
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
 				if ((i % 1000000 == 1 && i < 10000000) || (i % 10000000 == 1)) {
-                    energy_matrix_print(chain, biasmap, sim_params);
+                    //energy_matrix_print(chain, biasmap, sim_params);
 					/* This bit ensures the amplitude of the moves
 					is independent of the chain's history*/
 					copybetween(chain2, chain);
@@ -289,7 +293,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				//write out best solutions;
 				fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 				tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-                                //energy_matrix_print(chain, biasmap, sim_params);
+                //energy_matrix_print(chain, biasmap, sim_params);
 
 				//reset temp;
 				if (sim_params->protein_model.external_k[0] != external_k && currIndex > 100000) {
@@ -411,7 +415,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//sim_params->protein_model.external_k[0] = external_k;
 					//bestIndex = i*sim_params->pace + j;
 				}
-				else if (currIndex - lastIndex > swapGoodSteps && rand()%10000<100) {
+				else if (currIndex - lastIndex > swapGoodSteps && rand()%10000<swapGoodProb) {
 					if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
 
 						swapInd = rand() % (swapLength + 1);
@@ -427,10 +431,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 
 			}
-			else if (currIndex - lastIndex > swapBadSteps && rand()%10000<1000 ) {
+			else if (currIndex - lastIndex > swapBadSteps && rand()%10000<swapBadProb) {
 				if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
 					swapInd = rand() % (swapLength + 1);
-                                        //energy_matrix_print(chain, biasmap, sim_params);
+                    //energy_matrix_print(chain, biasmap, sim_params);
 					while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
 					//swapInd = swapLength;
 					fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
