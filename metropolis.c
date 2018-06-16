@@ -65,12 +65,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 			chaint->Ergt(i, j) = q;
 			if (i != 1 || j != chain->NAA - 1) {
-				//loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
-				loss += (chain->Erg(i, j) - q);
+				loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
+				//loss += (chain->Erg(i, j) - q);
 			}
 			else {
-				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
-				loss += (chain->Erg(i, j) - q);
+				loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
+				//loss += (chain->Erg(i, j) - q);
 			}
 				
 		}
@@ -90,7 +90,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double internalloss = loss;
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
-	if (q > 5) external_k = 0.02;
+	if (q > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
 	//loss += q - chain->Erg(0, 0);
@@ -107,8 +107,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 
 
-	//loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
-	loss = loss + externalloss;
+	loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
+	//loss = loss + externalloss;
 
 	
 	
@@ -162,9 +162,6 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	//
 	//double transvec[3][chain->NAA - 1];
 	double transvec[3];
-	//double transvec1[chain->NAA];
-	//double transvec2[chain->NAA];
-	//double transvec3[chain->NAA];
 	for (int i = 1; i < chain->NAA; i++) {
 		//chaint->aat[i].etc = chain->aa[i].etc;
 		//chaint->aat[i].num = chain->aa[i].num;
@@ -183,6 +180,12 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		//}
 
 	}
+	casttriplet(chaint->xaat[0], chain->xaa[0]);
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		casttriplet(chaint->xaat[i], chain->xaa[i]);
+	}
+	casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
+
 	//copybetween(chaint, chain);
 	double movement = 0.0;
 	int moved = 0;
@@ -518,8 +521,10 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	if (start == 0) {
 		pivot_around_end = 1;
 		//fprintf(stderr," pivot around end\n");
+		ampl = 1.5 * ampl;
 	} else if (end == sim_params->NAA) {
 		pivot_around_start = 1;
+		ampl = 1.5 * ampl;
 		//fprintf(stderr," pivot around start\n");
 	} else if (chain->aa[start].chainid != chain->aa[end].chainid) {
 		//fprintf(stderr,"  chainid[start] = %d, chainid[end] = %d\n",chain->aa[start].chainid,chain->aa[end].chainid);
@@ -704,7 +709,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 			amplitude *= 1.1;
 		}*/
 	}
-	else if (sim_params->protein_model.external_potential_type == 5 && rand()%100 < 5 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand()%100 < 10 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 	//	//fprintf(stderr, "translation!\n");

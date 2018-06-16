@@ -29,7 +29,7 @@ void biasmap_finalise(Biasmap *biasmap);
 double centerX, centerY, centerZ, spacing;
 //double *Nmapvalue, *Omapvalue, *CAmapvalue, *Hmapvalue, *Cmapvalue, *NAmapvalue, *Smapvalue, *emapvalue, *dmapvalue;
 int NX, NY, NZ;
-double targetBest;
+double targetBest, currTargetEnergy;
 //double totalEBest;
 double lowerGridEnergy(double);
 void gridbox_initialise();

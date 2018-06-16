@@ -183,6 +183,20 @@ double clash(AA *a, model_params *mod_params)
 	return erg;
 }
 
+double HHvDW(AA *a, AA *b) 
+{
+	double HHradii = 2.6;
+	double HHstrength = 0.077;
+	double distHH = distance(a->h, b->h);
+	double p6 = (HHradii*HHradii/distHH) * (HHradii*HHradii/distHH) *(HHradii*HHradii/distHH);
+        double erg=0.;
+	if (a->id != 'P' && b->id != 'P' && distHH<4.84) {
+		erg = 0.55/sqrt(distHH) + HHstrength * (p6*p6-2*p6);
+		//fprintf(stderr, "close exN HH %g\n", erg);
+	}
+        return erg;	
+}
+
 #ifdef LJ_NEIGHBOUR_HARD
 /* Energy contribution of all vdW interaction between 2 neighbouring residues */
 /* order of neighbors matter, b follows a in the chain */
@@ -204,6 +218,9 @@ double exclude_neighbor(AA *a, AA *b, model_params *mod_params)
 	} else {
 		stop("Clash cannot be calculated without a valid vdW potential.");
 	}
+
+
+	erg += HHvDW(a, b);
 
 	/* collect G__ and G2_ vdW parameters */
 	if (mod_params->use_gamma_atoms != NO_GAMMA) {
@@ -401,6 +418,7 @@ double exclude_neighbor(AA *a, AA *b, model_params *mod_params)
 		stop("Clash cannot be calculated without a valid vdW potential.");
 	}
 
+	erg += HHvDW(a, b);
 
 	/* collect G__ and G2_ vdW parameters */
 	if (mod_params->use_gamma_atoms != NO_GAMMA) {
@@ -626,6 +644,8 @@ double exclude_hard(AA *a, AA *b, double d2, model_params *mod_params, int hbond
 	} else {
 		stop("Clash cannot be calculated without a valid vdW potential.");
 	}
+
+	erg += HHvDW(a, b);
 
     /* Calculates the correct index for maxvdw_gamma_gamma 
      * note the other d2 > should be changed for maximum efficiency*/
@@ -913,6 +933,8 @@ double exclude(AA *a, AA *b, double d2, model_params *mod_params)
 	double depth = 0;
 	double vdw_erg = 0;
 	const double backbone_constants[3] = { mod_params->vdw_backbone_cutoff, mod_params->vdw_backbone_cutoff, mod_params->vdw_backbone_cutoff };
+
+	erg += HHvDW(a, b);
 
 	//Assign function pointer to the vdW model
 	double (*vdw_fn) (vector r1, vector r2, double Rmin, double depth, double vdw_rel_cutoff, double energy_shift, double clash_energy_at_hard_cutoff) = NULL;

@@ -19,6 +19,7 @@ double clash(AA *a, model_params *mod_params);
 double vdw_hard_cutoff(vector r1, vector r2, double Rmin, double depth, double vdw_rel_cutoff, double energy_shift, double clash_energy_at_hard_cutoff);
 double vdw_lj(vector r1, vector r2, double Rmin, double depth, double vdw_rel_cutoff, double energy_shift, double clash_energy_at_hard_cutoff);
 double exclude_neighbor(AA *a, AA *b, model_params *mod_params);
+double HHvDW(AA *a, AA *b);
 double exclude(AA *a, AA *b, double d2, model_params *mod_params);
 
 /* custom tests that depend on the energy implementation */
