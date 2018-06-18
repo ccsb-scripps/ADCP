@@ -65,12 +65,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 			chaint->Ergt(i, j) = q;
 			if (i != 1 || j != chain->NAA - 1) {
-				loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
-				//loss += (chain->Erg(i, j) - q);
+				//loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
+				loss += (chain->Erg(i, j) - q);
 			}
 			else {
-				loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
-				//loss += (chain->Erg(i, j) - q);
+				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
+				loss += (chain->Erg(i, j) - q);
 			}
 				
 		}
@@ -90,7 +90,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double internalloss = loss;
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
-	if (q > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
+	if (q > 0) external_k = 0.02 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
 	//loss += q - chain->Erg(0, 0);
@@ -107,7 +107,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 
 
-	loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
+	//loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
 	//loss = loss + externalloss;
 
 	
@@ -118,9 +118,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		return 0;	/* disregard rejected changes */
 	}
 
-    //if (sim_params->protein_model.external_potential_type == 5 && q < 10 && externalloss < 0.0 && !sim_params->NS &&   exp(sim_params->thermobeta * (externalloss)) * RAND_MAX < external_k * rand()) {
-    //    return 0;
-    //}
+    if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   sim_params->thermobeta * externalloss * RAND_MAX * external_k < - rand()) {
+        return 0;
+    }
 	//
 	//if (sim_params->protein_model.external_potential_type == 5 && q >= 10 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss) * RAND_MAX < external_k * rand()) {
 	//	//fprintf(stderr," rejected\n");
@@ -709,7 +709,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 			amplitude *= 1.1;
 		}*/
 	}
-	else if (sim_params->protein_model.external_potential_type == 5 && rand()%100 < 10 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 20 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 	//	//fprintf(stderr, "translation!\n");

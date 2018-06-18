@@ -215,7 +215,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int noImprovStopSteps = 20000000;
 		int swapBadSteps = 200000;
 		int swapGoodSteps = 200000;
-		double goodEnergyDiff = 5; //5kcal
+		double goodEnergyDiff = 8.33; //5kcal
 		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature

@@ -187,11 +187,13 @@ double HHvDW(AA *a, AA *b)
 {
 	double HHradii = 2.6;
 	double HHstrength = 0.077;
+	if (a->id == 'P' || b->id == 'P') return 0.;
 	double distHH = distance(a->h, b->h);
+	if (distHH >= 9) return 0.;
 	double p6 = (HHradii*HHradii/distHH) * (HHradii*HHradii/distHH) *(HHradii*HHradii/distHH);
         double erg=0.;
-	if (a->id != 'P' && b->id != 'P' && distHH<4.84) {
-		erg = 0.55/sqrt(distHH) + HHstrength * (p6*p6-2*p6);
+	if (a->id != 'P' && b->id != 'P' && distHH<9) {
+		erg = 1/sqrt(distHH) + HHstrength * (p6*p6-2*p6) - 0.282;
 		//fprintf(stderr, "close exN HH %g\n", erg);
 	}
         return erg;	
