@@ -199,7 +199,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int stopSignal = 0;
 		int swapInd = 0;
 		int swapInd2 = 0;
-		int swapLength = 20; //size of swapping pool
+		int swapLength = 10; //size of swapping pool
 		int inCache = 0;
 		int ind = 0;
 		int currIndex = 0;
@@ -215,7 +215,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int noImprovStopSteps = 20000000;
 		int swapBadSteps = 200000;
 		int swapGoodSteps = 200000;
-		double goodEnergyDiff = 8.33; //5kcal
+		double goodEnergyDiff = 5; //5kcal=8.33
 		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
