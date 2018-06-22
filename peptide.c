@@ -996,10 +996,13 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	
 	if ((sim_params->protein_model).external_potential_type == 5) {
 		//srand(sim_params->seed);
-	
-		chain->aa[0].ca[0] = centerX - randx * (NX - 1) * spacing / 4;
-		chain->aa[0].ca[1] = centerY - randy * (NY - 1) * spacing / 4;
-		chain->aa[0].ca[2] = centerZ - randz * (NZ - 1) * spacing / 4;
+		int transPtsID = rand() % transPtsCount;
+		chain->aa[0].ca[0] = Xpts[transPtsID];
+		chain->aa[0].ca[1] = Ypts[transPtsID];
+		chain->aa[0].ca[2] = Zpts[transPtsID];
+		//chain->aa[0].ca[0] = centerX - randx * (NX - 1) * spacing / 4;
+		//chain->aa[0].ca[1] = centerY - randy * (NY - 1) * spacing / 4;
+		//chain->aa[0].ca[2] = centerZ - randz * (NZ - 1) * spacing / 4;
 		//fprintf(stderr, "random number %g %g %g \n", (double)rand(), RAND_MAX, sim_params->seed);
 		//chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;
 	}

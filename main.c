@@ -196,6 +196,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 		int bestIndex = 0; //Index for last best energy found
 
+		int mutateIndex = 0;
+
 		int stopSignal = 0;
 		int swapInd = 0;
 		int swapInd2 = 0;
@@ -213,16 +215,17 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		/*optimizing parameters*/
 		int noImprovHeatSteps = 1000000; 
 		int noImprovStopSteps = 20000000;
-		int swapBadSteps = 200000;
-		int swapGoodSteps = 200000;
+		int swapBadSteps = 100000;
+		int swapMutateSteps = 500000;
+		int swapGoodSteps = 100000;
 		double goodEnergyDiff = 5; //5kcal=8.33
 		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
 		int annealSteps = 10000;
 		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
-		int swapGoodProb = 100; //chance of swapping a good pose after swapGoodSteps, out of 10000
-		int swapBadProb = 1000; //chance of swapping a bad pose after swapBadSteps, out of 10000
+		int swapGoodProb = 5000; //chance of swapping a good pose after swapGoodSteps, out of 10000
+		int swapBadProb = 5000; //chance of swapping a bad pose after swapBadSteps, out of 10000
 
 
 		//initialize swapping pool, last element is with the best energy
@@ -293,7 +296,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				//write out best solutions;
 				fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 				tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-                		energy_matrix_print(chain, biasmap, sim_params);
+                //energy_matrix_print(chain, biasmap, sim_params);
 				
 				//reset temp;
 				if (sim_params->protein_model.external_k[0] != external_k && currIndex > 100000) {
@@ -359,7 +362,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				stopSignal = 1;
 				break;
 			}
-			else if ((currIndex - resetIndex) > noImprovHeatSteps && sim_params->protein_model.external_k[0] == external_k) {
+			else if ((currIndex - resetIndex) > noImprovHeatSteps && currIndex - mutateIndex > swapMutateSteps && sim_params->protein_model.external_k[0] == external_k) {
 				sim_params->protein_model.external_k[0] = external_k * heatFactor;
 				fprintf(stderr, "No improvement after %d, Heat up system\n", noImprovHeatSteps);
 				swapInd = rand() % (swapLength + 1);
@@ -414,7 +417,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//sim_params->protein_model.external_k[0] = external_k;
 					//bestIndex = i*sim_params->pace + j;
 				}
-				else if (currIndex - lastIndex > swapGoodSteps && rand()%10000<swapGoodProb) {
+				else if (currIndex - lastIndex > swapGoodSteps && currIndex - mutateIndex > swapMutateSteps && rand()%10000<swapGoodProb) {
 					if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
 
 						swapInd = rand() % (swapLength + 1);
@@ -430,19 +433,32 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 
 			}
-			else if (currIndex - lastIndex > swapBadSteps && rand()%10000<swapBadProb) {
-				if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
+			else if (currIndex - lastIndex > swapBadSteps && currIndex - mutateIndex > swapMutateSteps) {
+				if (rand() % 10000 < swapBadProb) {
+					if (swapAneal || external_k == sim_params->protein_model.external_k[0]) {
+						swapInd = rand() % (swapLength + 1);
+						//energy_matrix_print(chain, biasmap, sim_params);
+						while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
+						//swapInd = swapLength;
+						fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
+						copybetween(chain, swapChains[swapInd]);
+						lastIndex = currIndex;
+						//sim_params->protein_model.external_k[0] = external_k;
+					}
+				}
+				else {
 					swapInd = rand() % (swapLength + 1);
-                    //energy_matrix_print(chain, biasmap, sim_params);
+					//energy_matrix_print(chain, biasmap, sim_params);
 					while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);
 					//swapInd = swapLength;
-					fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
+					fprintf(stderr, "transmutate bad curr %g best %g curriter %d \n", currTargetEnergy, targetBest, i);
 					copybetween(chain, swapChains[swapInd]);
+					transmutate(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 					lastIndex = currIndex;
-					//sim_params->protein_model.external_k[0] = external_k;
+					mutateIndex = currIndex;
 				}
-
 			}
+
 		}
 		//clean up
 		for (int i = 0; i < swapLength + 1; i++) {
@@ -845,9 +861,9 @@ int main(int argc, char *argv[])
 	if (sim_params.protein_model.external_potential_type == 5) {
 
 		//Cgridmap_initialise();
-
+		transpts_initialise();
 		gridbox_initialise();
-
+		
 		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
 
 		gridmap_initialise("rigidReceptor.C.map", 0);
@@ -861,6 +877,11 @@ int main(int argc, char *argv[])
 		gridmap_initialise("rigidReceptor.NA.map", 6);
 		gridmap_initialise("rigidReceptor.e.map", 7);
 		gridmap_initialise("rigidReceptor.d.map", 8);
+
+		
+
+		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
+
 
 		fprintf(stderr, "AD Grid maps initialisation finished \n");
 	}
@@ -998,8 +1019,13 @@ int main(int argc, char *argv[])
 #endif
 
 	fprintf(stderr, "best target energy %g\n", targetBest);
-	for (int atype = 0; atype < sizeof(gridmapvalues) / sizeof(gridmapvalues)[0]; atype++)
-		free(gridmapvalues[atype]);
+	if (sim_params.protein_model.external_potential_type == 5) {
+		free(Xpts);
+		free(Ypts);
+		free(Zpts);
+		for (int atype = 0; atype < sizeof(gridmapvalues) / sizeof(gridmapvalues)[0]; atype++)
+			free(gridmapvalues[atype]);
+	}
 	fprintf(stderr,"The program has successfully finished in %d seconds. :)  Bye-bye!\n", time(NULL)- startTime);
 	return EXIT_SUCCESS;
 }

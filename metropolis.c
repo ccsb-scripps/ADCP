@@ -90,7 +90,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double internalloss = loss;
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
-	if (q > 0 || externalloss < -10 ) external_k = 0.1 * external_k;
+	if (q > 0 || externalloss < -10 ) external_k = 0.02 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
 	//loss += q - chain->Erg(0, 0);
@@ -113,7 +113,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	
 	
 
-	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss) * RAND_MAX < external_k * rand()) {
+	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss) * RAND_MAX < rand()) {
 		//fprintf(stderr," rejected\n");
 		return 0;	/* disregard rejected changes */
 	}
@@ -151,10 +151,87 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	
     return 1;
 }
-
 /* Make a crankshaft move.  This is a local move that involves
 the crankshaft rotation of up to 4 peptde bonds.  Propose a
 move, and apply the Metropolis criteria. */
+void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+{
+
+	/*translational move*/
+
+	double transvec[3];
+	for (int i = 1; i < chain->NAA; i++) {
+		chaint->aat[i] = chain->aa[i];
+	}
+	casttriplet(chaint->xaat[0], chain->xaa[0]);
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		casttriplet(chaint->xaat[i], chain->xaa[i]);
+	}
+	casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
+
+	int transPtsID = rand() % transPtsCount;
+
+
+	int centerAAID = (chain->NAA + 1) / 2;
+	transvec[0] = - chain->aa[centerAAID].c[0] + Xpts[transPtsID];
+	transvec[1] = - chain->aa[centerAAID].c[1] + Ypts[transPtsID];
+	transvec[2] =  -chain->aa[centerAAID].c[2] + Zpts[transPtsID];
+	double movement = 0;
+	//fprintf(stderr, "translational move %g %g %g %d \n", transvec[0][vecind], transvec[1][vecind], transvec[2][vecind],chain->NAA);
+	for (int i = 0; i < 3; i++) {
+		movement = transvec[i];
+		for (int j = 1; j < chain->NAA; j++) {
+			//chaint->aat[j].h[i] = chain->aa[j].h[i] + movement;
+			//chaint->aat[j].n[i] = chain->aa[j].n[i] + movement;
+			//chaint->aat[j].ca[i] = chain->aa[j].ca[i] + movement;
+			//chaint->aat[j].c[i] = chain->aa[j].c[i] + movement;
+			//chaint->aat[j].o[i] = chain->aa[j].o[i] + movement;
+			chaint->aat[j].g[i] = chain->aa[j].g[i] + movement;
+			chaint->aat[j].g2[i] = chain->aa[j].g2[i] + movement;
+			//chaint->aat[j].cb[i] = chain->aa[j].cb[i] + movement;
+
+			if (chaint->aat[j].id != 'P') {
+				chaint->aat[j].h[i] += movement;
+			}
+			chaint->aat[j].n[i] += movement;
+			chaint->aat[j].ca[i] += movement;
+			chaint->aat[j].c[i] += movement;
+			chaint->aat[j].o[i] += movement;
+			if (chaint->aat[j].id != 'G') {
+				chaint->aat[j].cb[i] += movement;
+			}
+
+		}
+	}
+
+
+
+	double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
+
+
+	//if loss is negative, it's worse, bad
+	double externalloss = chain->Erg(0, 0) - transExtEne;
+	casttriplet(chain->xaa[0], chaint->xaat[0]);
+
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		casttriplet(chain->xaa[i], chaint->xaat[i]);
+	}
+
+
+	chain->Erg(0, 0) = transExtEne;
+	//if (transExtEne < -30) fprintf(stderr, "committing moved !!\n");
+
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		chain->aa[i] = chaint->aat[i];
+	}
+	fprintf(stderr, "transmutate!!! %g %g %g\n", chain->aa[centerAAID].c[0], chain->aa[centerAAID].c[1], chain->aa[centerAAID].c[2]);
+	fprintf(stderr, "transmutate!!! %g %g %g\n", Xpts[transPtsID], Ypts[transPtsID], Zpts[transPtsID]);
+	//copybetween(chain, chaint);
+
+}
+
+
+/* Make a translation move. */
 static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
 	
@@ -207,20 +284,23 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		if (chain->Erg(0, 0) > 0) {
 			if (sim_params->seq != NULL) {
 				if (length > 0.5) {
-					movement = 4 * (length - 0.75);
+					movement = rand() / RAND_MAX - 0.5;
 				}
-				else movement = transvec[i];
+				else movement = transvec[i] ;
 			}
 			else {
-				movement = transvec[i] / abs(vecind2 - vecind1);
+				movement = transvec[i] * length / abs(vecind2 - vecind1);
 			}			
 		}
 		else {
-			if (length < 0.2) {
+			if (length > 0.3) {
 				//movement = 5 * (length - 0.1);
-				movement = 0.6 * rand() / RAND_MAX - 0.3;
+				movement = 0.4 * rand() / RAND_MAX - 0.2;
 			}
-			else movement = transvec[i] / abs(vecind2 - vecind1);
+			else {
+				//movement = 6 * rand() / RAND_MAX - 3;
+				movement = transvec[i] * length / abs(vecind2 - vecind1);
+			}
 			//movement = 0.2 *(rand()/RAND_MAX) - 0.1;
 			//return 0;
 			//movement = transvec[i] * (length -0.5);
@@ -260,10 +340,12 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	//if loss is negative, it's worse, bad
 	double externalloss = chain->Erg(0, 0) - transExtEne;
 
-
+	double external_k = 1.0;
+	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
+	if (externalloss < -10) external_k = 0.02 * external_k;
 
 	//if (moved && allowed(chain, chaint, biasmap, 1, chain->NAA - 1, logLstar, currE, sim_params)) {
-	if (externalloss < 0.0 && exp(sim_params->thermobeta * externalloss) * RAND_MAX < sim_params->protein_model.external_k[0] * rand()) {
+	if (externalloss < 0.0 && sim_params->thermobeta * externalloss * RAND_MAX * external_k < -rand()) {
 		return 0;
 	}
 	else {
@@ -709,7 +791,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 			amplitude *= 1.1;
 		}*/
 	}
-	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 20 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 5 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 	//	//fprintf(stderr, "translation!\n");

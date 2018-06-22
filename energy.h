@@ -33,7 +33,13 @@ double targetBest, currTargetEnergy;
 //double totalEBest;
 double lowerGridEnergy(double);
 void gridbox_initialise();
+void transpts_initialise();
 double *gridmapvalues[9];
+int transPtsCount;
+double *Xpts;
+double *Ypts;
+double *Zpts;
+
 void gridmap_initialise(char *, int);
 
 double gridenergy(double X, double Y, double Z, int i, double charge);

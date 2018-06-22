@@ -432,6 +432,44 @@ void gridmap_initialise(char *filename, int atype) {
 
 }
 
+
+void transpts_initialise() {
+	FILE *transpts = NULL;
+	transpts = fopen("transpoints", "r");
+	char line[256];
+	int i = 0, j = 0;
+	
+	fgets(line, sizeof(line), transpts);
+	transPtsCount = atoi(line);
+	Xpts = malloc(transPtsCount * sizeof(double));
+	Ypts = malloc(transPtsCount * sizeof(double));
+	Zpts = malloc(transPtsCount * sizeof(double));
+
+	while (fgets(line, sizeof(line), transpts)) {
+		char * pch;
+		pch = strtok(line, " ");
+		j = 0;
+		while (pch != NULL)
+		{
+			if (j == 0) {
+				Xpts[i] = atof(pch);
+			}
+			else if (j == 1) {
+				Ypts[i] = atof(pch);
+			}
+			else if (j == 2) {
+				Zpts[i] = atof(pch);
+			}
+			pch = strtok(NULL, " ");
+			j++;
+		}
+		i++;
+	}
+
+	printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount-1], Zpts[transPtsCount-1]);
+	fclose(transpts);
+
+}
 /***********************************************************/
 /****               ENERGY  CONTRIBUTIONS               ****/
 /***********************************************************/
