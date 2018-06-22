@@ -849,21 +849,12 @@ int main(int argc, char *argv[])
 	model_param_read(sim_params.prm,&(sim_params.protein_model),&(sim_params.flex_params));
 
 
-
-	initialize_sidechain_properties(&(sim_params.protein_model));
-	vdw_cutoff_distances_calculate(&sim_params, stderr, 0);
-	peptide_init();
-
-
-
-	param_print(sim_params,sim_params.outfile); //read-in
-    
 	if (sim_params.protein_model.external_potential_type == 5) {
 
 		//Cgridmap_initialise();
 		transpts_initialise();
 		gridbox_initialise();
-		
+
 		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
 
 		gridmap_initialise("rigidReceptor.C.map", 0);
@@ -878,13 +869,26 @@ int main(int argc, char *argv[])
 		gridmap_initialise("rigidReceptor.e.map", 7);
 		gridmap_initialise("rigidReceptor.d.map", 8);
 
-		
+
 
 		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
 
 
 		fprintf(stderr, "AD Grid maps initialisation finished \n");
 	}
+
+
+
+
+	initialize_sidechain_properties(&(sim_params.protein_model));
+	vdw_cutoff_distances_calculate(&sim_params, stderr, 0);
+	peptide_init();
+
+
+
+	param_print(sim_params,sim_params.outfile); //read-in
+    
+
 	/* HERE STARTS THE ACTUAL SIMULATION */
 
 	if(!sim_params.NS){
