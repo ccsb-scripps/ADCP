@@ -214,10 +214,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 		/*optimizing parameters*/
 		int noImprovHeatSteps = 1000000; 
-		int noImprovStopSteps = 20000000;
-		int swapBadSteps = 100000;
+		int noImprovStopSteps = 40000000;
+		int swapBadSteps = 200000;
 		int swapMutateSteps = 500000;
-		int swapGoodSteps = 100000;
+		int swapGoodSteps = 200000;
 		double goodEnergyDiff = 5; //5kcal=8.33
 		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
@@ -225,7 +225,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int annealSteps = 10000;
 		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
 		int swapGoodProb = 5000; //chance of swapping a good pose after swapGoodSteps, out of 10000
-		int swapBadProb = 5000; //chance of swapping a bad pose after swapBadSteps, out of 10000
+		int swapBadProb = 9000; //chance of swapping a bad pose after swapBadSteps, out of 10000
 
 
 		//initialize swapping pool, last element is with the best energy
