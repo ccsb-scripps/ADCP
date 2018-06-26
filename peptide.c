@@ -994,7 +994,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	//fprintf(stderr,"END XAA_PREV\n");
 	chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;
 	
-	if ((sim_params->protein_model).external_potential_type == 5) {
+	if ((sim_params->protein_model).external_potential_type == 5 && transPtsCount!=0) {
 		//srand(sim_params->seed);
 		int transPtsID = rand() % transPtsCount;
 		chain->aa[0].ca[0] = Xpts[transPtsID];

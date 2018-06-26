@@ -158,7 +158,7 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 {
 
 	/*translational move*/
-
+	if (transPtsCount==0) return;
 	double transvec[3];
 	for (int i = 1; i < chain->NAA; i++) {
 		chaint->aat[i] = chain->aa[i];

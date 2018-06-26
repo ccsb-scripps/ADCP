@@ -441,9 +441,15 @@ void transpts_initialise() {
 	
 	fgets(line, sizeof(line), transpts);
 	transPtsCount = atoi(line);
+	if (transPtsCount == 0) {
+		printf("no transpoints found \n");
+		fclose(transpts);
+		return;
+	}
 	Xpts = malloc(transPtsCount * sizeof(double));
 	Ypts = malloc(transPtsCount * sizeof(double));
 	Zpts = malloc(transPtsCount * sizeof(double));
+
 
 	while (fgets(line, sizeof(line), transpts)) {
 		char * pch;
@@ -466,7 +472,7 @@ void transpts_initialise() {
 		i++;
 	}
 
-	printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount-1], Zpts[transPtsCount-1]);
+	printf("transpoints box initialise succuss %i \n", transPtsCount);
 	fclose(transpts);
 
 }
