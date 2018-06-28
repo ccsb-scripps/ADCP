@@ -226,7 +226,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
 		int swapGoodProb = 5000; //chance of swapping a good pose after swapGoodSteps, out of 10000
 		int swapBadProb = 9000; //chance of swapping a bad pose after swapBadSteps, out of 10000
-
+		int initTransMutate = 1; //initialize with randomize translation
+		int swapTransMutate = 0; //transMutate during simulation
 
 		//initialize swapping pool, last element is with the best energy
 		for (int i = 0; i < swapLength + 1; i++) {
@@ -240,6 +241,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		if (sim_params->protein_model.external_potential_type2 == 4) sim_params->protein_model.external_k[0] = sim_params->protein_model.external_k2[0];
 		double external_k = sim_params->protein_model.external_k[0];
         sim_params->protein_model.external_k[0] = external_k * heatFactor;
+		if (initTransMutate) transmutate(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+
 		fprintf(stderr, "begin run with pace %d stretch %d \n", sim_params->pace, sim_params->stretch);
 		for (i = 1; i < sim_params->stretch * sim_params->pace; i++) {
 			if (stopSignal) break;
@@ -446,7 +449,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//sim_params->protein_model.external_k[0] = external_k;
 					}
 				}
-				else {
+				else if (swapTransMutate) {
 					swapInd = rand() % (swapLength + 1);
 					//energy_matrix_print(chain, biasmap, sim_params);
 					while (swapEnergy[swapInd] > currTargetEnergy) swapInd = rand() % (swapLength + 1);

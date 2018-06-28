@@ -288,9 +288,14 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 				}
 				else movement = transvec[i] ;
 			}
+			if (length > 0.3) {
+				//movement = 5 * (length - 0.1);
+				movement = 0.4 * rand() / RAND_MAX - 0.2;
+			}
 			else {
+				//movement = 6 * rand() / RAND_MAX - 3;
 				movement = transvec[i] * length / abs(vecind2 - vecind1);
-			}			
+			}
 		}
 		else {
 			if (length > 0.3) {
