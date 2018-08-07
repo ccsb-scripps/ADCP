@@ -77,8 +77,7 @@ extern struct _GLN GLN;
 void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_params) {
 	int i, j;
 
-	/* (0,0) */
-	chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
+
 
 	//fprintf(stderr,"first row %g %g", chain->Erg(0, 0), chain->Erg(1, 0));
 	/* (0,*) and (*,0) */
@@ -87,7 +86,10 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 	//	fprintf(stderr,"%g ",chain->Erg(0,i));
 	}
 	//fprintf(stderr,"\n");
-	
+
+	/* (0,0) */
+	chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
+
 	if (mod_params->external_potential_type2 == 4)	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 	/* diagonal */
 	//fprintf(stderr,"diag ");
@@ -1371,6 +1373,7 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 {
 	int i, j;
 	float n; /* used to normalized vectors */
+	
 	float N[3] = { a->n[0], a->n[1], a->n[2] }; /* coordiantes from 1crn.pdb:TYR29:N */
 	float CA[3] = { a->ca[0], a->ca[1], a->ca[2] }; /* coordiantes from 1crn.pdb:TYR29:CA */
 	float CB[3] = { a->cb[0], a->cb[1], a->cb[2] }; /* coordiantes from 1crn.pdb:TYR29:CB */
@@ -1387,50 +1390,66 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 					   }
 					   */
 					   /* compute matrix to align canonical TYR rotamer to 1crn:TYR29 backbone */
-	normalizedVector(N, CA, v1); /* X vector */
-								 /* printf("V1 %f %f %f %f\n", v1[0], v1[1], v1[2], v1[0]*v1[0]+ v1[1]*v1[1]+ v1[2]*v1[2]); */
-	normalizedVector(CA, CB, v3);
-	/* printf("V3 %f %f %f %f\n", v3[0], v3[1], v3[2], v3[0]*v3[0]+ v3[1]*v3[1]+ v3[2]*v3[2]); */
-	vectorProduct(v3, v1, v2); /* Y vector*/
-							   /* printf("V2 %f %f %f %f\n", v2[0], v2[1], v2[2], v2[0]*v2[0]+ v2[1]*v2[1]+ v2[2]*v2[2]); */
-	n = 1. / sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
-	for (i = 0; i < 3; i++) v2[i] = v2[i] * n;
-	vectorProduct(v1, v2, v3); /* Z vector*/
-	n = 1. / sqrt(v3[0] * v3[0] + v3[1] * v3[1] + v3[2] * v3[2]);
-	for (i = 0; i < 3; i++) v3[i] = v3[i] * n;
-	/* printf("V3 %f %f %f %f\n", v3[0], v3[1], v3[2], v3[0]*v3[0]+ v3[1]*v3[1]+ v3[2]*v3[2]); */
-	/* xform matrix */
-	for (i = 0; i < 3; i++) {
-		mat[i][0] = v1[i];
-		mat[i][1] = v2[i];
-		mat[i][2] = v3[i];
-		mat[i][3] = CA[i];
-	}
-	/*
-	printf("%8.3f %8.3f %8.3f %8.3f\n",mat[0][0],mat[0][1],mat[0][2],mat[0][3]);
-	printf("%8.3f %8.3f %8.3f %8.3f\n",mat[1][0],mat[1][1],mat[1][2],mat[1][3]);
-	printf("%8.3f %8.3f %8.3f %8.3f\n",mat[2][0],mat[2][1],mat[2][2],mat[2][3]);
-	*/
-	//fprintf(stderr, "haha %g \n", coords[nbRot - 1][nbAtoms - 1][2]);
-	/* apply transformation to canonical all rot side chains coordinates */
 	float score = 0.0;
-	float bestScore = 999.0;
-	for (i = 0; i < nbRot; i++) {
-		score = 0.0;
-		for (j = 0; j < nbAtoms; j++) {
-			//fprintf(stderr, "test type %i score %g \n", atypes[i], score);
-			tc[i][j][0] = mat[0][0] * coords[i][j][0] + mat[0][1] * coords[i][j][1] + mat[0][2] * coords[i][j][2] + mat[0][3];
-			tc[i][j][1] = mat[1][0] * coords[i][j][0] + mat[1][1] * coords[i][j][1] + mat[1][2] * coords[i][j][2] + mat[1][3];
-			tc[i][j][2] = mat[2][0] * coords[i][j][0] + mat[2][1] * coords[i][j][1] + mat[2][2] * coords[i][j][2] + mat[2][3];
-			//fprintf(stderr, "test type %i\n", atypes[i]);
-			score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j], charges[j]);
-			//fprintf(stderr, "test nbROT %i type %i score %g \n", i, atypes[j], score);
+	float bestScore = 99999.0;
+	float randx, randy, randz;
+	/*scan a little bit more space, number of random trials*/
+	int numRand = 4;
+	for (int pertInd=0; pertInd < numRand; pertInd++){
+		randx = rand() / RAND_MAX;
+		randy = rand() / RAND_MAX;
+		randz = rand() / RAND_MAX;
+		N[0] = a->n[0] + randx - 0.5;
+		N[1] = a->n[1] + randy - 0.5;
+		N[2] = a->n[2] + randz - 0.5;
+		//N[3] = { a->n[0] + randx - 0.5, a->n[1] + randy - 0.5, a->n[2] + randz - 0.5 }
+		normalizedVector(N, CA, v1); /* X vector */
+								 /* printf("V1 %f %f %f %f\n", v1[0], v1[1], v1[2], v1[0]*v1[0]+ v1[1]*v1[1]+ v1[2]*v1[2]); */
+		normalizedVector(CA, CB, v3);
+		/* printf("V3 %f %f %f %f\n", v3[0], v3[1], v3[2], v3[0]*v3[0]+ v3[1]*v3[1]+ v3[2]*v3[2]); */
+		vectorProduct(v3, v1, v2); /* Y vector*/
+								   /* printf("V2 %f %f %f %f\n", v2[0], v2[1], v2[2], v2[0]*v2[0]+ v2[1]*v2[1]+ v2[2]*v2[2]); */
+		n = 1. / sqrt(v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2]);
+		for (i = 0; i < 3; i++) v2[i] = v2[i] * n;
+		vectorProduct(v1, v2, v3); /* Z vector*/
+		n = 1. / sqrt(v3[0] * v3[0] + v3[1] * v3[1] + v3[2] * v3[2]);
+		for (i = 0; i < 3; i++) v3[i] = v3[i] * n;
+		/* printf("V3 %f %f %f %f\n", v3[0], v3[1], v3[2], v3[0]*v3[0]+ v3[1]*v3[1]+ v3[2]*v3[2]); */
+		/* xform matrix */
+		for (i = 0; i < 3; i++) {
+			mat[i][0] = v1[i];
+			mat[i][1] = v2[i];
+			mat[i][2] = v3[i];
+			mat[i][3] = CA[i];
 		}
-		if (score < bestScore) {
-			bestScore = score;
-			a->SCRot = i;
+		/*
+		printf("%8.3f %8.3f %8.3f %8.3f\n",mat[0][0],mat[0][1],mat[0][2],mat[0][3]);
+		printf("%8.3f %8.3f %8.3f %8.3f\n",mat[1][0],mat[1][1],mat[1][2],mat[1][3]);
+		printf("%8.3f %8.3f %8.3f %8.3f\n",mat[2][0],mat[2][1],mat[2][2],mat[2][3]);
+		*/
+		/* apply transformation to canonical all rot side chains coordinates */
+		score = 0.0;
+
+		for (i = 0; i < nbRot; i++) {
+			score = 0.0;
+			for (j = 0; j < nbAtoms; j++) {
+				//fprintf(stderr, "test type %i score %g \n", atypes[i], score);
+				tc[i][j][0] = mat[0][0] * coords[i][j][0] + mat[0][1] * coords[i][j][1] + mat[0][2] * coords[i][j][2] + mat[0][3];
+				tc[i][j][1] = mat[1][0] * coords[i][j][0] + mat[1][1] * coords[i][j][1] + mat[1][2] * coords[i][j][2] + mat[1][3];
+				tc[i][j][2] = mat[2][0] * coords[i][j][0] + mat[2][1] * coords[i][j][1] + mat[2][2] * coords[i][j][2] + mat[2][3];
+				//fprintf(stderr, "test type %i\n", atypes[i]);
+				score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j], charges[j]);
+				//fprintf(stderr, "test nbROT %i type %i score %g \n", i, atypes[j], score);
+			}
+			if (score < bestScore) {
+				bestScore = score;
+				a->SCRot = i;
+
+			}
 		}
 	}
+	
+
 	//fprintf(stderr, "score %g \n", bestScore);
 	//free(tc),free(v1),free(v2),free(v3),free(mat);
 
@@ -1455,7 +1474,7 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 
 
 	double abscharge = (charge >= 0. ? charge : -charge);
-        //charge = 0.;
+        charge = 0.;
 	int lowGridX = (int)exactGridX,
 		lowGridY = (int)exactGridY,
 		lowGridZ = (int)exactGridZ;
@@ -1670,8 +1689,8 @@ double external(AA *a, model_params *mod_params, vector molcom)
 				sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.charges, PRO.atypes, PRO.coords, a);
 				break;
 			case 'V':
-				//sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a);
-				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
+				sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a);
+				//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
 				break;
 			case 'F':
 				sideChainEnergy = scoreSideChain(PHE.nbRot, PHE.nbAtoms, PHE.charges, PHE.atypes, PHE.coords, a);
@@ -1698,16 +1717,16 @@ double external(AA *a, model_params *mod_params, vector molcom)
 				sideChainEnergy = scoreSideChain(LYS.nbRot, LYS.nbAtoms, LYS.charges, LYS.atypes, LYS.coords, a);
 				break;
 			case 'S':
-				//sideChainEnergy = scoreSideChain(SER.nbRot, SER.nbAtoms, SER.charges, SER.atypes, SER.coords, a);
-				sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 2, -0.398);
+				sideChainEnergy = scoreSideChain(SER.nbRot, SER.nbAtoms, SER.charges, SER.atypes, SER.coords, a);
+				//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 2, -0.398);
 				break;
 			case 'T':
-				//sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a);
-				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
+				sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a);
+				//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
 				break;
 			case 'C':
-				//sideChainEnergy = scoreSideChain(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a);
-				sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
+				sideChainEnergy = scoreSideChain(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a);
+				//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
 				break;
 			case 'M':
 				sideChainEnergy = scoreSideChain(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a);
@@ -1722,7 +1741,7 @@ double external(AA *a, model_params *mod_params, vector molcom)
 				break;
 			}
 		}
-		erg += sideChainEnergy;
+		erg += sideChainEnergy/2;
 		// AD energy is in kcal/mol, scale down kcal/mol to RT!
 		erg = erg / 0.59219;
 	} else if (mod_params->external_potential_type == 2) {
@@ -2012,11 +2031,18 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
   double test_external = 0.0;
   for (int i = 1; i < chain->NAA; i++){
 	double ee;
-	if( i <= end && i >= start){ /* changed peptide section */
+	if (chaint == NULL) {
+		ee = external((chain->aa) + i, mod_params, mol_com);
+		chain->Erg(0, i) = ee;
+	}
+	else if(i <= end && i >= start){ /* changed peptide section */
 		ee = external((chaint->aat) + i, mod_params, mol_com);
+		chaint->Ergt(0, i) = ee;
 		//fprintf(stderr,"external energy3 %g\n", ee);
 	} else {
-		ee = external((chain->aa) + i, mod_params, mol_com);
+		ee = chain->Erg(0, i);
+		chaint->Ergt(0, i) = ee;
+		//ee = external((chain->aa) + i, mod_params, mol_com);
 		//fprintf(stderr, "external energy4 %g\n", ee);
 	}
 	

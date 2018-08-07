@@ -69,8 +69,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 				loss += (chain->Erg(i, j) - q);
 			}
 			else {
-				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
-				loss += (chain->Erg(i, j) - q);
+				loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
+				//loss += (chain->Erg(i, j) - q);
 			}
 				
 		}
@@ -142,7 +142,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		for (j = 1; j < chain->NAA; j++)
 	    	chain->Erg(i, j) = chain->Erg(j, i) = chaint->Ergt(i, j);
 
-	chain->Erg(0, 0) = q;
+	for (j = 1; j < chain->NAA; j++)
+	    chain->Erg(0, j) = chaint->Ergt(0, j);
 
 	if (sim_params->protein_model.external_potential_type2 == 4) {
 		chain->Erg(1, 0) = cyclicBondEnergy;
@@ -288,13 +289,13 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 				}
 				else movement = transvec[i] ;
 			}
-			if (length > 0.8) {
+			if (length > 0.3) {
 				//movement = 5 * (length - 0.1);
 				movement = 0.4 * rand() / RAND_MAX - 0.2;
 			}
 			else {
 				//movement = 6 * rand() / RAND_MAX - 3;
-				movement = transvec[i] / abs(vecind2 - vecind1);
+				movement = transvec[i] * length / abs(vecind2 - vecind1);
 			}
 		}
 		else {
