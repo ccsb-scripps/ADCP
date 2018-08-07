@@ -1455,7 +1455,7 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 
 
 	double abscharge = (charge >= 0. ? charge : -charge);
-        charge = 0.;
+        //charge = 0.;
 	int lowGridX = (int)exactGridX,
 		lowGridY = (int)exactGridY,
 		lowGridZ = (int)exactGridZ;
