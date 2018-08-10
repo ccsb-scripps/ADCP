@@ -42,7 +42,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 {	
 
 
-
+	
 	int i, j;
 	double q, loss = 0.0;
 	
@@ -78,11 +78,18 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	/*Also take into account the global_energy term */
 
 
-	q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
+	//q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
 	//loss += (chain->Erg(0, 0) - q);
 	//fprintf(stderr,"MC move q = %g, loss = %g,",q,loss);
-	double externalloss = (chain->Erg(0, 0) - q);
-
+	//double externalloss = (chain->Erg(0, 0) - q);
+	double externalloss = 0.0;
+	double ADEnergy_Chaint[end-start+1];
+	if (sim_params->protein_model.external_potential_type == 5){
+		for (i = start; i <= end; i++){
+			ADEnergy_Chaint[i-start] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
+			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
+		}		
+	}
 
 
 
@@ -142,8 +149,14 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		for (j = 1; j < chain->NAA; j++)
 	    	chain->Erg(i, j) = chain->Erg(j, i) = chaint->Ergt(i, j);
 
-	for (j = 1; j < chain->NAA; j++)
-	    chain->Erg(0, j) = chaint->Ergt(0, j);
+	for (j = start; j <= end; j++)
+	    chain->Erg(0, j) = ADEnergy_Chaint[j-start];
+
+	chain->Erg(0, 0) = 0.0;
+
+	for (j = 1; j < chain->NAA; j++) {
+		chain->Erg(0, 0) += chain->Erg(0, j);
+	}
 
 	if (sim_params->protein_model.external_potential_type2 == 4) {
 		chain->Erg(1, 0) = cyclicBondEnergy;
@@ -157,7 +170,6 @@ the crankshaft rotation of up to 4 peptde bonds.  Propose a
 move, and apply the Metropolis criteria. */
 void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
-
 	/*translational move*/
 	if (transPtsCount==0) return;
 	double transvec[3];
@@ -206,12 +218,19 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 	}
 
 
+	double ADEnergy_Chaint[chain->NAA - 1];
+	for (int i = 1; i <= chain->NAA - 1; i++){
+		ADEnergy_Chaint[i - 1] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
+	}
 
-	double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
+	//externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
+
+
+	//double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
 
 
 	//if loss is negative, it's worse, bad
-	double externalloss = chain->Erg(0, 0) - transExtEne;
+	//double externalloss = chain->Erg(0, 0) - transExtEne;
 	casttriplet(chain->xaa[0], chaint->xaat[0]);
 
 	for (int i = 1; i <= chain->NAA - 1; i++) {
@@ -219,8 +238,12 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 	}
 
 
-	chain->Erg(0, 0) = transExtEne;
+	chain->Erg(0, 0) = 0.0;
 	//if (transExtEne < -30) fprintf(stderr, "committing moved !!\n");
+	for (int j = 1; j < chain->NAA; j++) {
+	    chain->Erg(0, j) = ADEnergy_Chaint[j - 1];
+		chain->Erg(0, 0) += chain->Erg(0, j);
+	}
 
 	for (int i = 1; i <= chain->NAA - 1; i++) {
 		chain->aa[i] = chaint->aat[i];
@@ -235,7 +258,7 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 /* Make a translation move. */
 static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
-	
+
 	/*translational move*/
 	//
 	//double transvec[3][chain->NAA - 1];
@@ -343,8 +366,18 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
 
 
+	double externalloss = 0.0;
+	double ADEnergy_Chaint[chain->NAA - 1];
+
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		ADEnergy_Chaint[i - 1] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
+		externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i - 1];
+	}
+		
+
+
 	//if loss is negative, it's worse, bad
-	double externalloss = chain->Erg(0, 0) - transExtEne;
+	//double externalloss = chain->Erg(0, 0) - transExtEne;
 
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
@@ -362,8 +395,13 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		}
 
 
-		chain->Erg(0, 0) = transExtEne;
-		//if (transExtEne < -30) fprintf(stderr, "committing moved !!\n");
+	    chain->Erg(0, 0) = 0.0;
+
+	    for (int j = 1; j < chain->NAA; j++) {
+	        chain->Erg(0, j) = ADEnergy_Chaint[j - 1];
+	    	chain->Erg(0, 0) += chain->Erg(0, j);
+	    }
+
 		//fprintf(stderr,"translation!!!\n");
 		for (int i = 1; i <= chain->NAA - 1; i++) {
 			chain->aa[i] = chaint->aat[i];
@@ -371,9 +409,6 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		//copybetween(chain, chaint);
 		return 1;
 	}
-
-	
-
 }
 
 
@@ -437,7 +472,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 			stop("sequence is not present in sim_params for MC lookup table calculation\n");
 		}
 		//allocate memory
-//		fprintf(stderr,"allocating memory: 4 * (%d-1+%d) integers.\n",sim_params->NAA,sim_params->Nchains);
+        //fprintf(stderr,"allocating memory: 4 * (%d-1+%d) integers.\n",sim_params->NAA,sim_params->Nchains);
 		int N = (sim_params->NAA - 1 + sim_params->Nchains);
 		sim_params->MC_lookup_table = (int *)malloc(sizeof(int) * 4 * N);
 		sim_params->MC_lookup_table_n = (int *)malloc(sizeof(int) * 4);

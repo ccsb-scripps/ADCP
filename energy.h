@@ -58,6 +58,7 @@ double energy1(AA *, model_params *mod_params);
 double energy2( Biasmap *,AA *,  AA *, model_params *mod_params);
 /* the energy terms from terms that don't involve 1 or 2 residues */
 double cyclic_energy(AA *, AA *, int);
+double ADenergy(AA *, model_params *mod_params);
 double global_energy(int, int, Chain*, Chaint*,Biasmap *, model_params *mod_params);
 double all_vdw(Biasmap *biasmap, Chain *chain, model_params *mod_params);
 

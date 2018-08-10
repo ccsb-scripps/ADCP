@@ -81,6 +81,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 
 	//fprintf(stderr,"first row %g %g", chain->Erg(0, 0), chain->Erg(1, 0));
 	/* (0,*) and (*,0) */
+
 	for (i = 1; i < chain->NAA; i++){
 		chain->Erg(0, i) = chain->Erg(i, 0) = 0.;
 	//	fprintf(stderr,"%g ",chain->Erg(0,i));
@@ -88,7 +89,13 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 	//fprintf(stderr,"\n");
 
 	/* (0,0) */
-	chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
+	chain->Erg(0, 0) = 0.0;
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		chain->Erg(0, i) = ADenergy(chain->aa + i, mod_params);
+		chain->Erg(0, 0) += chain->Erg(0, i);
+	}
+
+	//chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
 
 	if (mod_params->external_potential_type2 == 4)	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 	/* diagonal */
@@ -118,10 +125,10 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 double totenergy(Chain *chain)
 {
 	int i, j;
-	double toten = chain->Erg(0, 0)+ chain->Erg(1, 0);
+	double toten = chain->Erg(1, 0);
 
 	//fprintf(stderr, "tote... %g\n", chain->Erg(0,0));
-	for (i = 1; i < chain->NAA; i++)
+	for (i = 0; i < chain->NAA; i++)
 		for (j = 1; j <= i; j++) {
 			toten += chain->Erg(i, j);
 	//		fprintf(stderr, "%g ", chain->Erg(i,j));
@@ -197,7 +204,9 @@ double firstlastenergy(Chain *chain)
 /* Print the energy matrix of a chain */
 void energy_matrix_print(Chain *chain, Biasmap *biasmap, model_params *mod_params) {
 	int i, j;
-    
+    for (i = 0; i < chain->NAA; i++)
+		fprintf(stderr,"%g ",chain->Erg(0, i));
+	fprintf(stderr,"\n");
     for (i = 0; i < chain->NAA; i++){
 	for (j = 0; j <= i; j++){
 		fprintf(stderr,"%g ",chain->Erg(i, j));
@@ -1394,14 +1403,17 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 	float bestScore = 99999.0;
 	float randx, randy, randz;
 	/*scan a little bit more space, number of random trials*/
-	int numRand = 4;
+	int numRand = 3;
 	for (int pertInd=0; pertInd < numRand; pertInd++){
-		randx = rand() / RAND_MAX;
-		randy = rand() / RAND_MAX;
-		randz = rand() / RAND_MAX;
-		N[0] = a->n[0] + randx - 0.5;
-		N[1] = a->n[1] + randy - 0.5;
-		N[2] = a->n[2] + randz - 0.5;
+		if (pertInd!=0){
+			randx = rand() / RAND_MAX;
+			randy = rand() / RAND_MAX;
+			randz = rand() / RAND_MAX;
+			N[0] = a->n[0] + randx - 0.5;
+			N[1] = a->n[1] + randy - 0.5;
+			N[2] = a->n[2] + randz - 0.5;
+		}
+
 		//N[3] = { a->n[0] + randx - 0.5, a->n[1] + randy - 0.5, a->n[2] + randz - 0.5 }
 		normalizedVector(N, CA, v1); /* X vector */
 								 /* printf("V1 %f %f %f %f\n", v1[0], v1[1], v1[2], v1[0]*v1[0]+ v1[1]*v1[1]+ v1[2]*v1[2]); */
@@ -1474,7 +1486,7 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 
 
 	double abscharge = (charge >= 0. ? charge : -charge);
-        charge = 0.;
+    //charge = 0.;
 	int lowGridX = (int)exactGridX,
 		lowGridY = (int)exactGridY,
 		lowGridZ = (int)exactGridZ;
@@ -1579,14 +1591,8 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 }
 
 
-
-
-
-
-/* external potential depending on atomic position */
-double external(AA *a, model_params *mod_params, vector molcom)
+double ADenergy(AA *a, model_params *mod_params)
 {
-
 	/* only calculate for constrained amino acids */
 	/* TODO: add constraint type other than 1 */
 	//if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
@@ -1601,81 +1607,65 @@ double external(AA *a, model_params *mod_params, vector molcom)
 	scale(com,1.0/3.0, com);
 
 	//fprintf(stderr, "calculating constraint on amino acid %d", a->num);
-	/* constraining to the z axis using a harmonic potential
-		E =	k * ( sqrt(x^2+y^2) - r0 )^2	if x^2+y^2 > r0^2,
-			0				otherwise.  */
-	if (mod_params->external_potential_type == 1) {
+	// AutoDock Grid Energy
+	//fprintf(stderr, "restype %c \n", a->id);
+	double exC = 0.0, exCa = 0.0, exN = 0.0, exO = 0.0, exCb = 0.0, exH = 0.0;
 
-		//fprintf(stderr,"calculating constraint on amino acid %d", a->num);
-		//fprintf(stderr, "calculating constraint on amino acid %g %g", com[0], com[1]);
-    		//fprintf(stderr," (etc: %x), %x\n",a->etc,(a->etc & CONSTRAINED));
-		//Original CRANKITE
-		double dr2 = com[0]*com[0] + com[1]*com[1]; //distance^2 from (0,0) in the (x,y) plane
-		if (dr2 > mod_params->external_r0[0]*mod_params->external_r0[0]) {
-			dr = sqrt(dr2) - mod_params->external_r0[0];
-			erg += mod_params->external_k[0] * dr * dr;
-		}
+	/* element types are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
+	double CCharge = 0.241, CaCharge = 0.186, NCharge = -0.346, OCharge = -0.271, CbCharge = 0.050, HCharge = 0.163;
+	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", a->c[0], a->c[1], a->c[2], exO);
 
-	} else if (mod_params->external_potential_type == 5) {
-		// AutoDock Grid Energy
-		//fprintf(stderr, "restype %c \n", a->id);
-		double exC = 0.0, exCa = 0.0, exN = 0.0, exO = 0.0, exCb = 0.0, exH = 0.0;
+	if (a->id == 'G') {
+		CaCharge = 0.218;
+	}
+	else if (a->id == 'S') {
+		CaCharge = 0.219;
+		CbCharge = 0.199;
+	}
+	else if (a->id == 'P') {
+		CaCharge = 0.165;
+		CbCharge = 0.034;
+	}
+	else if (a->id == 'C') {
+		CbCharge = 0.120;
+	}
+	else if (a->id == 'T' || a->id == 'D' || a->id == 'N') {
+		CbCharge = 0.146;
+	}
 
-		/* element types are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
-		double CCharge = 0.241, CaCharge = 0.186, NCharge = -0.346, OCharge = -0.271, CbCharge = 0.050, HCharge = 0.163;
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", a->c[0], a->c[1], a->c[2], exO);
+	if (a->num==1) {
+		HCharge = 0.275;
+		CCharge = 0.484;
+		CaCharge = CaCharge + 0.2;
+	}
 
-		if (a->id == 'G') {
-			CaCharge = 0.218;
-		}
-		else if (a->id == 'S') {
-			CaCharge = 0.219;
-			CbCharge = 0.199;
-		}
-		else if (a->id == 'P') {
-			CaCharge = 0.165;
-			CbCharge = 0.034;
-		}
-		else if (a->id == 'C') {
-			CbCharge = 0.120;
-		}
-		else if (a->id == 'T' || a->id == 'D' || a->id == 'N') {
-			CbCharge = 0.146;
-		}
-
-		if (a->num==1) {
-			HCharge = 0.275;
-			CCharge = 0.484;
-			CaCharge = CaCharge + 0.2;
-		}
-
-		if (a->id != 'P') {
-			exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
-		}
-		exC = gridenergy(a->c[0], a->c[1], a->c[2], 0, CCharge);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		exCa = gridenergy(a->ca[0], a->ca[1], a->ca[2], 0, CaCharge);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+	if (a->id != 'P') {
 		exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
-		exCb = gridenergy(a->cb[0], a->cb[1], a->cb[2], 0, CbCharge);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		exN = gridenergy(a->n[0], a->n[1], a->n[2], 1, NCharge);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		exO = gridenergy(a->o[0], a->o[1], a->o[2], 2, OCharge);
-		//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-		erg = (exC + exCa + exH + exN + exO + exCb);
-		//fprintf(stderr, "bb Energy %g \n", erg);
-		if (erg > 10000000 || erg < -10000000) {
-			fprintf(stderr, "energies C %g CA %g N %g O %g Cb %g H %g", exC, exCa, exN, exO, exCb, exH);
-			stop("Grid energy exceeds limits, something wrong!");
-		}
+	}
+	exC = gridenergy(a->c[0], a->c[1], a->c[2], 0, CCharge);
+	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+	exCa = gridenergy(a->ca[0], a->ca[1], a->ca[2], 0, CaCharge);
+	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+	exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
+	exCb = gridenergy(a->cb[0], a->cb[1], a->cb[2], 0, CbCharge);
+	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+	exN = gridenergy(a->n[0], a->n[1], a->n[2], 1, NCharge);
+	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+	exO = gridenergy(a->o[0], a->o[1], a->o[2], 2, OCharge);
+	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
+	erg = (exC + exCa + exH + exN + exO + exCb);
+	//fprintf(stderr, "bb Energy %g \n", erg);
+	if (erg > 10000000 || erg < -10000000) {
+		fprintf(stderr, "energies C %g CA %g N %g O %g Cb %g H %g", exC, exCa, exN, exO, exCb, exH);
+		stop("Grid energy exceeds limits, something wrong!");
+	}
 
-		
-		double sideChainEnergy = 0.0;
+	
+	double sideChainEnergy = 0.0;
 
 
-		/*Here is a hack, external_r0[0] term 1.x indicate to reconstruct full-atom sidechain score grid energy */
-		if ((int) mod_params->external_r0[0] == 1.0) {
+	/*Here is a hack, external_r0[0] term 1.x indicate to reconstruct full-atom sidechain score grid energy */
+	if ((int) mod_params->external_r0[0] == 1.0) {
 			//fprintf(stderr, "calculate side chain external energy\n");
 			switch (a->id)
 			{
@@ -1740,10 +1730,49 @@ double external(AA *a, model_params *mod_params, vector molcom)
 			default:
 				break;
 			}
+	}
+	erg += sideChainEnergy / 2;
+	// AD energy is in kcal/mol, scale down kcal/mol to RT!
+	erg = erg / 0.59219;
+	return erg;
+}
+
+
+
+/* external potential depending on atomic position */
+double external(AA *a, model_params *mod_params, vector molcom)
+{
+
+	/* only calculate for constrained amino acids */
+	/* TODO: add constraint type other than 1 */
+	//if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
+	/* C-O-M or n, ca, c */
+	//gridmap_initialise();
+	vector com;	/* N-Ca and Ca-C bonds */
+	double erg = 0.0;
+	double dr;
+
+	add(com, a->ca, a->n);
+	add(com, com, a->c);
+	scale(com,1.0/3.0, com);
+
+	//fprintf(stderr, "calculating constraint on amino acid %d", a->num);
+	/* constraining to the z axis using a harmonic potential
+		E =	k * ( sqrt(x^2+y^2) - r0 )^2	if x^2+y^2 > r0^2,
+			0				otherwise.  */
+	if (mod_params->external_potential_type == 1) {
+
+		//fprintf(stderr,"calculating constraint on amino acid %d", a->num);
+		//fprintf(stderr, "calculating constraint on amino acid %g %g", com[0], com[1]);
+    		//fprintf(stderr," (etc: %x), %x\n",a->etc,(a->etc & CONSTRAINED));
+		//Original CRANKITE
+		double dr2 = com[0]*com[0] + com[1]*com[1]; //distance^2 from (0,0) in the (x,y) plane
+		if (dr2 > mod_params->external_r0[0]*mod_params->external_r0[0]) {
+			dr = sqrt(dr2) - mod_params->external_r0[0];
+			erg += mod_params->external_k[0] * dr * dr;
 		}
-		erg += sideChainEnergy/2;
-		// AD energy is in kcal/mol, scale down kcal/mol to RT!
-		erg = erg / 0.59219;
+
+
 	} else if (mod_params->external_potential_type == 2) {
 		stop("unimplemented type 2");
 		if (mod_params->external_direction[0] == EXTERNAL_POSITIVE || mod_params->external_direction[0] == EXTERNAL_POSNEG ) {
@@ -2031,18 +2060,19 @@ double global_energy(int start, int end, Chain *chain, Chaint *chaint, Biasmap *
   double test_external = 0.0;
   for (int i = 1; i < chain->NAA; i++){
 	double ee;
-	if (chaint == NULL) {
+	if (!chaint) {
 		ee = external((chain->aa) + i, mod_params, mol_com);
-		chain->Erg(0, i) = ee;
+		//chain->Erg(0, i) = ee;
+		//fprintf(stderr,"external energy3 %g\n", ee);
 	}
 	else if(i <= end && i >= start){ /* changed peptide section */
 		ee = external((chaint->aat) + i, mod_params, mol_com);
-		chaint->Ergt(0, i) = ee;
+		//chaint->Ergt(0, i) = ee;
 		//fprintf(stderr,"external energy3 %g\n", ee);
 	} else {
-		ee = chain->Erg(0, i);
-		chaint->Ergt(0, i) = ee;
-		//ee = external((chain->aa) + i, mod_params, mol_com);
+		//ee = chain->Erg(0, i);
+		//chaint->Ergt(0, i) = ee;
+		ee = external((chain->aa) + i, mod_params, mol_com);
 		//fprintf(stderr, "external energy4 %g\n", ee);
 	}
 	

@@ -182,7 +182,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 	chain2->aa = NULL; chain2->xaa = NULL; chain2->erg = NULL; chain2->xaa_prev = NULL;
 	allocmem_chain(chain2,chain->NAA,chain->Nchains);
 
-	//energy_matrix_print(chain, biasmap, sim_params);
+	energy_matrix_print(chain, biasmap, sim_params);
+	//stop("I will stop here,\n");
 	if (sim_params->protein_model.opt == 1) {
 		targetBest = 99999.;
 		double targetBestTemp = targetBest;
@@ -226,7 +227,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
 		int swapGoodProb = 5000; //chance of swapping a good pose after swapGoodSteps, out of 10000
 		int swapBadProb = 9000; //chance of swapping a bad pose after swapBadSteps, out of 10000
-		int initTransMutate = 1; //initialize with randomize translation
+		int initTransMutate = 0; //initialize with randomize translation
 		int swapTransMutate = 0; //transMutate during simulation
 
 		//initialize swapping pool, last element is with the best energy
@@ -249,7 +250,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			targetBestTemp = targetBest;
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
 				if ((i % 1000000 == 1 && i < 10000000) || (i % 10000000 == 1)) {
-                    //energy_matrix_print(chain, biasmap, sim_params);
+                    energy_matrix_print(chain, biasmap, sim_params);
 					/* This bit ensures the amplitude of the moves
 					is independent of the chain's history*/
 					copybetween(chain2, chain);
