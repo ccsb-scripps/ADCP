@@ -1378,11 +1378,13 @@ void normalizedVector(float *a, float *b, float *v) {
 	for (i = 0; i<3; i++) v[i] = v[i] * n;
 }
 
+
+//score side chain and also set gamma position
 float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  double coords[nbRot][nbAtoms][3], AA *a)
 {
 	int i, j;
 	float n; /* used to normalized vectors */
-	
+	float sideChainCenter[3], bestSideChainCenter[3];
 	float N[3] = { a->n[0], a->n[1], a->n[2] }; /* coordiantes from 1crn.pdb:TYR29:N */
 	float CA[3] = { a->ca[0], a->ca[1], a->ca[2] }; /* coordiantes from 1crn.pdb:TYR29:CA */
 	float CB[3] = { a->cb[0], a->cb[1], a->cb[2] }; /* coordiantes from 1crn.pdb:TYR29:CB */
@@ -1406,9 +1408,9 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 	int numRand = 3;
 	for (int pertInd=0; pertInd < numRand; pertInd++){
 		if (pertInd!=0){
-			randx = rand() / RAND_MAX;
-			randy = rand() / RAND_MAX;
-			randz = rand() / RAND_MAX;
+			randx = rand() / (double) RAND_MAX;
+			randy = rand() / (double) RAND_MAX;
+			randz = rand() / (double) RAND_MAX;
 			N[0] = a->n[0] + randx - 0.5;
 			N[1] = a->n[1] + randy - 0.5;
 			N[2] = a->n[2] + randz - 0.5;
@@ -1444,23 +1446,45 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 
 		for (i = 0; i < nbRot; i++) {
 			score = 0.0;
+			sideChainCenter[0] = 0.0;
+			sideChainCenter[1] = 0.0;
+			sideChainCenter[2] = 0.0;
 			for (j = 0; j < nbAtoms; j++) {
 				//fprintf(stderr, "test type %i score %g \n", atypes[i], score);
 				tc[i][j][0] = mat[0][0] * coords[i][j][0] + mat[0][1] * coords[i][j][1] + mat[0][2] * coords[i][j][2] + mat[0][3];
 				tc[i][j][1] = mat[1][0] * coords[i][j][0] + mat[1][1] * coords[i][j][1] + mat[1][2] * coords[i][j][2] + mat[1][3];
 				tc[i][j][2] = mat[2][0] * coords[i][j][0] + mat[2][1] * coords[i][j][1] + mat[2][2] * coords[i][j][2] + mat[2][3];
 				//fprintf(stderr, "test type %i\n", atypes[i]);
+				sideChainCenter[0] += tc[i][j][0];
+				sideChainCenter[1] += tc[i][j][1];
+				sideChainCenter[2] += tc[i][j][2];
 				score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j], charges[j]);
 				//fprintf(stderr, "test nbROT %i type %i score %g \n", i, atypes[j], score);
 			}
 			if (score < bestScore) {
 				bestScore = score;
 				a->SCRot = i;
+				bestSideChainCenter[0] = sideChainCenter[0]/nbAtoms;
+				bestSideChainCenter[1] = sideChainCenter[1]/nbAtoms;
+				bestSideChainCenter[2] = sideChainCenter[2]/nbAtoms;
 
 			}
 		}
 	}
-	
+	if (a->id !='I'){
+		a->g[0] = bestSideChainCenter[0];
+		a->g[1] = bestSideChainCenter[1];
+		a->g[2] = bestSideChainCenter[2];
+	}
+	else {
+		a->g[0] = (tc[a->SCRot][0][0]+tc[a->SCRot][1][0])/2;
+		a->g[1] = (tc[a->SCRot][0][1]+tc[a->SCRot][1][1])/2;
+		a->g[2] = (tc[a->SCRot][0][2]+tc[a->SCRot][1][2])/2;
+		a->g2[0] = tc[a->SCRot][2][0];
+		a->g2[1] = tc[a->SCRot][2][1];
+		a->g2[2] = tc[a->SCRot][2][2];
+	}
+		
 
 	//fprintf(stderr, "score %g \n", bestScore);
 	//free(tc),free(v1),free(v2),free(v3),free(mat);
@@ -1670,6 +1694,7 @@ double ADenergy(AA *a, model_params *mod_params)
 			switch (a->id)
 			{
 			case 'I':
+				//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
 				sideChainEnergy = scoreSideChain(ILE.nbRot, ILE.nbAtoms, ILE.charges, ILE.atypes, ILE.coords, a);
 				break;
 			case 'L':
@@ -1679,8 +1704,8 @@ double ADenergy(AA *a, model_params *mod_params)
 				sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.charges, PRO.atypes, PRO.coords, a);
 				break;
 			case 'V':
-				sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a);
-				//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
+				//sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a);
+				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
 				break;
 			case 'F':
 				sideChainEnergy = scoreSideChain(PHE.nbRot, PHE.nbAtoms, PHE.charges, PHE.atypes, PHE.coords, a);
@@ -1711,8 +1736,8 @@ double ADenergy(AA *a, model_params *mod_params)
 				//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 2, -0.398);
 				break;
 			case 'T':
-				sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a);
-				//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
+				//sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a);
+				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
 				break;
 			case 'C':
 				sideChainEnergy = scoreSideChain(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a);

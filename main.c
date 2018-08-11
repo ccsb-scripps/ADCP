@@ -856,7 +856,7 @@ int main(int argc, char *argv[])
 	if (sim_params.protein_model.external_potential_type == 5) {
 
 		//Cgridmap_initialise();
-		transpts_initialise();
+		//transpts_initialise();
 		gridbox_initialise();
 
 		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
