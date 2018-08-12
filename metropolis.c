@@ -41,11 +41,23 @@
 static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, int end, double logLstar, double *currE, simulation_params *sim_params)
 {	
 
-
+    
 	
 	int i, j;
 	double q, loss = 0.0;
 	
+
+	//get the AD energy first as it will set position for gamma atoms
+	double externalloss = 0.0;
+	double ADEnergy_Chaint[end-start+1];
+	if (sim_params->protein_model.external_potential_type == 5){
+		for (i = start; i <= end; i++){
+			ADEnergy_Chaint[i-start] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
+			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
+		}		
+	}
+
+
 	for (i = start; i <= end; i++){
 
 		for (j = 1; j < chain->NAA; j++) {
@@ -82,14 +94,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//loss += (chain->Erg(0, 0) - q);
 	//fprintf(stderr,"MC move q = %g, loss = %g,",q,loss);
 	//double externalloss = (chain->Erg(0, 0) - q);
-	double externalloss = 0.0;
-	double ADEnergy_Chaint[end-start+1];
-	if (sim_params->protein_model.external_potential_type == 5){
-		for (i = start; i <= end; i++){
-			ADEnergy_Chaint[i-start] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
-			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
-		}		
-	}
+
 
 
 

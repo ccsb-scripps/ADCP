@@ -129,7 +129,7 @@ double totenergy(Chain *chain)
 
 	//fprintf(stderr, "tote... %g\n", chain->Erg(0,0));
 	for (i = 0; i < chain->NAA; i++)
-		for (j = 1; j <= i; j++) {
+		for (j = 0; j <= i; j++) {
 			toten += chain->Erg(i, j);
 	//		fprintf(stderr, "%g ", chain->Erg(i,j));
 		}
@@ -363,14 +363,14 @@ void biasmap_finalise(Biasmap *biasmap){
 /*make energy grid map smoother*/
 double lowerGridEnergy(double E) {
 	//return E;
-	//if (E > 2.71828) {
-	//	//return log10f(E) + 9;
-	//	return log(E) + 1.71828;
-	//}
-	if (E > 10) {
+	if (E > 2.71828) {
 		//return log10f(E) + 9;
-		return log(E-9) + 9;
+		return log(E) + 1.71828;
 	}
+	//if (E > 10) {
+	//	//return log10f(E) + 9;
+	//	return log(E-9) + 10;
+	//}
 	return E;
 }
 
