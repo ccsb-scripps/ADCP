@@ -1471,18 +1471,33 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 			}
 		}
 	}
-	if (a->id !='I'){
-		a->g[0] = bestSideChainCenter[0];
-		a->g[1] = bestSideChainCenter[1];
-		a->g[2] = bestSideChainCenter[2];
-	}
-	else {
-		a->g[0] = (tc[a->SCRot][0][0]+tc[a->SCRot][1][0])/2;
-		a->g[1] = (tc[a->SCRot][0][1]+tc[a->SCRot][1][1])/2;
-		a->g[2] = (tc[a->SCRot][0][2]+tc[a->SCRot][1][2])/2;
-		a->g2[0] = tc[a->SCRot][2][0];
-		a->g2[1] = tc[a->SCRot][2][1];
-		a->g2[2] = tc[a->SCRot][2][2];
+	
+	switch (a->id)
+	{
+		case 'I':
+			a->g[0] = (tc[a->SCRot][0][0]+tc[a->SCRot][1][0])/2;
+			a->g[1] = (tc[a->SCRot][0][1]+tc[a->SCRot][1][1])/2;
+			a->g[2] = (tc[a->SCRot][0][2]+tc[a->SCRot][1][2])/2;
+			a->g2[0] = tc[a->SCRot][2][0];
+			a->g2[1] = tc[a->SCRot][2][1];
+			a->g2[2] = tc[a->SCRot][2][2];
+			break;
+		case 'S':
+			a->g[0] = tc[a->SCRot][0][0];
+			a->g[1] = tc[a->SCRot][0][1];
+			a->g[2] = tc[a->SCRot][0][2];
+			break;
+		case 'P':
+			a->g[0] = tc[a->SCRot][0][0];
+			a->g[1] = tc[a->SCRot][0][1];
+			a->g[2] = tc[a->SCRot][0][2];
+			break;
+		default:
+			a->g[0] = bestSideChainCenter[0];
+			a->g[1] = bestSideChainCenter[1];
+			a->g[2] = bestSideChainCenter[2];
+			break;
+
 	}
 		
 
@@ -1756,7 +1771,7 @@ double ADenergy(AA *a, model_params *mod_params)
 				break;
 			}
 	}
-	erg += sideChainEnergy / 2;
+	erg += sideChainEnergy;
 	// AD energy is in kcal/mol, scale down kcal/mol to RT!
 	erg = erg / 0.59219;
 	return erg;
