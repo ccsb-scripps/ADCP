@@ -169,9 +169,9 @@ static double calculateRMSD(Chain *chain, Chain *chain2)
 		dist = (chain->aa[i].ca[0] - chain2->aa[i].ca[0])*(chain->aa[i].ca[0] - chain2->aa[i].ca[0]);
 		dist += (chain->aa[i].ca[1] - chain2->aa[i].ca[1])*(chain->aa[i].ca[1] - chain2->aa[i].ca[1]);
 		dist += (chain->aa[i].ca[2] - chain2->aa[i].ca[2])*(chain->aa[i].ca[2] - chain2->aa[i].ca[2]);
-		RMSD += sqrt(dist);
+		RMSD += dist;
 	}
-	return RMSD / (chain->NAA-1);	
+	return sqrt(RMSD / (chain->NAA-1));	
 }
 
 void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params *sim_params)
@@ -219,7 +219,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		int swapBadSteps = 200000;
 		int swapMutateSteps = 500000;
 		int swapGoodSteps = 200000;
-		double goodEnergyDiff = 5; //5kcal=8.33
+		double goodEnergyDiff = 5; //5kcal=8.33 3kcal=5
 		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
