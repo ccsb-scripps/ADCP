@@ -163,6 +163,10 @@ void initialize_sidechain_properties(model_params *mod_params){
     double ro = mod_params->ro;
     double rcb = mod_params->rcb;
     //double rring = mod_params->rring;
+	double rr = 3.0;
+	double rlc = 3.5;
+	double rsc = 2.5;
+
     double es = mod_params->vdw_depth_s;
     double eo = mod_params->vdw_depth_o;
     double ecb = mod_params->vdw_depth_cb;
@@ -177,30 +181,59 @@ void initialize_sidechain_properties(model_params *mod_params){
     initialize_one_sidechain_properties(mod_params->sidechain_properties, 2,  'B', 0,  2.130, 112.6 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0,       0,        G__,              -1,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties, 3,  'C', 1,  1.822, 114.4 * M_PI_180,     -1,     -1,               rs,    -1,    es,     -1,  0.2153,  0.4890,   CB_ | G__,       2.0,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     /*Nik has made D G_ hydrophobic so charge-hydrophobic contact penalty can be used if wanted */                             
-    initialize_one_sidechain_properties(mod_params->sidechain_properties, 4,  'D', 1,  2.130, 112.6 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1665,  0.5260,   G__,              -1,  2.00,   -1,     G__,     -1,        0x0,  G__,    -1,  2.25  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties, 5,  'E', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0889,  0.5702,   G__,              -1,  2.00,   -1,     G__,     -1,        0x0,  G__,    -1,  3.50  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties, 6,  'F', 1,  2.908, 113.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0983,  0.5553,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties, 7,  'G', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties, 8,  'H', 1,  2.665, 113.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1301,  0.5378,   G__,              -1,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,  2.25  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties, 9,  'I', 2,  2.176, 110.5 * M_PI_180,  1.530,  110.4 * M_PI_180,   rcb,   rcb,   ecb,    ecb,  0.1402,  0.7700,   CB_ | G__ | G2_, 2.0,  2.00,  2.0,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties, 4,  'D', 1,  2.130, 112.6 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1665,  0.5260,   G__,              -1,  2.00,   -1,     G__,     -1,        0x0,  G__,    -1,  2.25  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties, 4,  'D', 1,  2.130, 112.6 * M_PI_180,     -1,     -1,              rsc,    -1,   ecb,     -1,  0.1665,  0.5260,   G__,              -1,  2.00,   -1,     G__,     -1,        0x0,  G__,    -1,  2.25  );
+
+	//initialize_one_sidechain_properties(mod_params->sidechain_properties, 5,  'E', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0889,  0.5702,   G__,              -1,  2.00,   -1,     G__,     -1,        0x0,  G__,    -1,  3.50  );
+	initialize_one_sidechain_properties(mod_params->sidechain_properties, 5,  'E', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rlc,    -1,   ecb,     -1,  0.0889,  0.5702,   G__,              -1,  2.00,   -1,     G__,     -1,        0x0,  G__,    -1,  3.50  );    
+	
+	//initialize_one_sidechain_properties(mod_params->sidechain_properties, 6,  'F', 1,  2.908, 113.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0983,  0.5553,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties, 6,  'F', 1,  2.908, 113.8 * M_PI_180,     -1,     -1,              rr,     -1,   ecb,     -1,  0.0983,  0.5553,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+
+	initialize_one_sidechain_properties(mod_params->sidechain_properties, 7,  'G', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties, 8,  'H', 1,  2.665, 113.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1301,  0.5378,   G__,              -1,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,  2.25  );
+	initialize_one_sidechain_properties(mod_params->sidechain_properties, 8,  'H', 1,  2.665, 113.8 * M_PI_180,     -1,     -1,              rr,     -1,   ecb,     -1,  0.1301,  0.5378,   G__,              -1,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,  2.25  );
+    
+	initialize_one_sidechain_properties(mod_params->sidechain_properties, 9,  'I', 2,  2.176, 110.5 * M_PI_180,  1.530,  110.4 * M_PI_180,   rcb,   rcb,   ecb,    ecb,  0.1402,  0.7700,   CB_ | G__ | G2_, 2.0,  2.00,  2.0,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties,10,  '0', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,11,  'K', 1,  4.700, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0784,  0.5582,   G__,              -1,  2.00,   -1,     G__,      1,        G__,  0x0,  4.25,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,12,  'L', 1,  2.176, 116.3 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0119,  0.6574,   CB_ | G__,       2.0,  3.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,13,  'M', 1,  3.532, 129.4 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0748,  0.6068,   CB_ | G__,       2.0,  3.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,14,  'N', 1,  2.130, 112.6 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1290,  0.5605,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  3.00,  2.25  );
+
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties,11,  'K', 1,  4.700, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0784,  0.5582,   G__,              -1,  2.00,   -1,     G__,      1,        G__,  0x0,  4.25,    -1  );
+	initialize_one_sidechain_properties(mod_params->sidechain_properties,11,  'K', 1,  4.700, 130.0 * M_PI_180,     -1,     -1,              rlc,    -1,   ecb,     -1,  0.0784,  0.5582,   G__,              -1,  2.00,   -1,     G__,      1,        G__,  0x0,  4.25,    -1  );
+	
+	//initialize_one_sidechain_properties(mod_params->sidechain_properties,12,  'L', 1,  2.176, 116.3 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0119,  0.6574,   CB_ | G__,       2.0,  3.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+	initialize_one_sidechain_properties(mod_params->sidechain_properties,12,  'L', 1,  2.176, 116.3 * M_PI_180,     -1,     -1,              rsc,    -1,   ecb,     -1,  0.0119,  0.6574,   CB_ | G__,       2.0,  3.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+
+	
+	//initialize_one_sidechain_properties(mod_params->sidechain_properties,13,  'M', 1,  3.532, 129.4 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0748,  0.6068,   CB_ | G__,       2.0,  3.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties,14,  'N', 1,  2.130, 112.6 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1290,  0.5605,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  3.00,  2.25  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties,13,  'M', 1,  3.532, 129.4 * M_PI_180,     -1,     -1,              rlc,    -1,   ecb,     -1,  0.0748,  0.6068,   CB_ | G__,       2.0,  3.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties,14,  'N', 1,  2.130, 112.6 * M_PI_180,     -1,     -1,              rsc,    -1,   ecb,     -1,  0.1290,  0.5605,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  3.00,  2.25  );
+
     initialize_one_sidechain_properties(mod_params->sidechain_properties,15,  '0', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     /* Proline's probabilities are for +- 30 not 60 */                                                                         
     initialize_one_sidechain_properties(mod_params->sidechain_properties,16,  'P', 1,  1.501, 103.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.4602,  0.5397,   G__,              -1,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,17,  'Q', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0729,  0.6052,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  4.25,  3.50  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,18,  'R', 1,  4.900, 134.1 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0893,  0.5791,   G__,              -1,  2.00,   -1,     G__,      1,        G__,  0x0,  4.25,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,19,  'S', 1,  1.417, 111.1 * M_PI_180,     -1,     -1,               ro,    -1,    eo,     -1,  0.4583,  0.3010,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  2.00,  1.30  );
+
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties,17,  'Q', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0729,  0.6052,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  4.25,  3.50  );
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties,18,  'R', 1,  4.900, 134.1 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0893,  0.5791,   G__,              -1,  2.00,   -1,     G__,      1,        G__,  0x0,  4.25,    -1  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties,17,  'Q', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rlc,    -1,   ecb,     -1,  0.0729,  0.6052,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  4.25,  3.50  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties,18,  'R', 1,  4.900, 134.1 * M_PI_180,     -1,     -1,              rlc,    -1,   ecb,     -1,  0.0893,  0.5791,   G__,              -1,  2.00,   -1,     G__,      1,        G__,  0x0,  4.25,    -1  );
+	
+	initialize_one_sidechain_properties(mod_params->sidechain_properties,19,  'S', 1,  1.417, 111.1 * M_PI_180,     -1,     -1,               ro,    -1,    eo,     -1,  0.4583,  0.3010,   G__,              -1,  2.00,   -1,     0x0,      0,        G__,  G__,  2.00,  1.30  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties,20,  'T', 2,  1.433, 109.9 * M_PI_180,  1.521,  109.3 * M_PI_180,    ro,   rcb,    eo,    ecb,  0.4794,  0.4418,   G2_,              -1,    -1,  2.0,     0x0,      0,        G__,  G__,  2.00,  1.30  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties,21,  'U', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties,22,  'V', 2,  1.521, 110.5 * M_PI_180,  1.521,  110.5 * M_PI_180,   rcb,   rcb,   ecb,    ecb,  0.0705,  0.2013,   CB_ | G__ | G2_, 2.0,  2.00,  2.0,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,23,  'W', 1,  2.908, 113.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1422,  0.4457,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,  3.00,    -1  );
+
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties,23,  'W', 1,  2.908, 113.8 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1422,  0.4457,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,  3.00,    -1  );
+    initialize_one_sidechain_properties(mod_params->sidechain_properties,23,  'W', 1,  2.908, 113.8 * M_PI_180,     -1,     -1,               rr,    -1,   ecb,     -1,  0.1422,  0.4457,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,  3.00,    -1  );
+
     initialize_one_sidechain_properties(mod_params->sidechain_properties,24,  'X', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    initialize_one_sidechain_properties(mod_params->sidechain_properties,25,  'Y', 1,  3.314, 113.9 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1133,  0.5352,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
-    /*Use E for Z*/                                                                                                         
+
+    //initialize_one_sidechain_properties(mod_params->sidechain_properties,25,  'Y', 1,  3.314, 113.9 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.1133,  0.5352,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+	initialize_one_sidechain_properties(mod_params->sidechain_properties,25,  'Y', 1,  3.314, 113.9 * M_PI_180,     -1,     -1,               rr,    -1,   ecb,     -1,  0.1133,  0.5352,   CB_ | G__,       2.0,  3.25,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
+
+	
+	/*Use E for Z*/                                                                                                         
     initialize_one_sidechain_properties(mod_params->sidechain_properties,26,  'Z', 1,  3.000, 130.0 * M_PI_180,     -1,     -1,              rcb,    -1,   ecb,     -1,  0.0889,  0.5702,   G__,              -1,  2.00,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties,27,  '0', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
     initialize_one_sidechain_properties(mod_params->sidechain_properties,28,  '0', 0,     -1,    -1,                -1,     -1,               -1,    -1,    -1,     -1,  0,       0,        0x0,              -1,    -1,   -1,     0x0,      0,        0x0,  0x0,    -1,    -1  );
