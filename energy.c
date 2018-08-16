@@ -1404,6 +1404,12 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 	float score = 0.0;
 	float bestScore = 99999.0;
 	float randx, randy, randz;
+
+	int nbHeavyAtoms = 0;
+
+	for (int nn =0; nn < nbAtoms; nn++){
+		if (atypes[nn]!=3) nbHeavyAtoms++;
+	}
 	/*scan a little bit more space, number of random trials*/
 	int numRand = 3;
 	for (int pertInd=0; pertInd < numRand; pertInd++){
@@ -1455,18 +1461,21 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 				tc[i][j][1] = mat[1][0] * coords[i][j][0] + mat[1][1] * coords[i][j][1] + mat[1][2] * coords[i][j][2] + mat[1][3];
 				tc[i][j][2] = mat[2][0] * coords[i][j][0] + mat[2][1] * coords[i][j][1] + mat[2][2] * coords[i][j][2] + mat[2][3];
 				//fprintf(stderr, "test type %i\n", atypes[i]);
-				sideChainCenter[0] += tc[i][j][0];
-				sideChainCenter[1] += tc[i][j][1];
-				sideChainCenter[2] += tc[i][j][2];
+				if (atypes[j]!=3) {
+					sideChainCenter[0] += tc[i][j][0];
+					sideChainCenter[1] += tc[i][j][1];
+					sideChainCenter[2] += tc[i][j][2];
+				}
+
 				score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j], charges[j]);
 				//fprintf(stderr, "test nbROT %i type %i score %g \n", i, atypes[j], score);
 			}
 			if (score < bestScore) {
 				bestScore = score;
 				a->SCRot = i;
-				bestSideChainCenter[0] = sideChainCenter[0]/nbAtoms;
-				bestSideChainCenter[1] = sideChainCenter[1]/nbAtoms;
-				bestSideChainCenter[2] = sideChainCenter[2]/nbAtoms;
+				bestSideChainCenter[0] = sideChainCenter[0]/nbHeavyAtoms;
+				bestSideChainCenter[1] = sideChainCenter[1]/nbHeavyAtoms;
+				bestSideChainCenter[2] = sideChainCenter[2]/nbHeavyAtoms;
 
 			}
 		}
