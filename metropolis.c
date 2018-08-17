@@ -49,10 +49,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 	//get the AD energy first as it will set position for gamma atoms
 	double externalloss = 0.0;
-	double ADEnergy_Chaint[end-start+1];
+	double* ADEnergy_Chaint;
 	if (sim_params->protein_model.external_potential_type == 5){
+		ADEnergy_Chaint = ADenergyNoClash(start,end,chain,chaint,&(sim_params->protein_model));
+
 		for (i = start; i <= end; i++){
-			ADEnergy_Chaint[i-start] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
+			//ADEnergy_Chaint[i-start] = chaint->Ergt(0, i);
 			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
 		}		
 	}
@@ -102,7 +104,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double internalloss = loss;
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
-	if (chain->Erg(0, 0) > 0 || externalloss < -10 || loss < -10) external_k = 0.09 * external_k;
+	if (chain->Erg(0, 0) > 20 || externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
+	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
 	//loss += q - chain->Erg(0, 0);
@@ -125,7 +128,13 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	
 	
 
-	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss) * RAND_MAX < external_k * rand()) {
+	//if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss * external_k) * RAND_MAX < rand()) {
+	//	//fprintf(stderr," rejected\n", );
+	//	return 0;	/* disregard rejected changes */
+	//}
+
+	
+	if (loss < 0.0  && !sim_params->NS &&  loss * RAND_MAX * external_k < -rand()) {
 		//fprintf(stderr," rejected\n", );
 		return 0;	/* disregard rejected changes */
 	}
@@ -136,8 +145,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 
 
-	//
-	//if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss * external_k) * RAND_MAX < rand()) {
+	
+	//if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
 	//	//fprintf(stderr," rejected\n");
 	//	return 0;	/* disregard rejected changes */
 	//}
@@ -375,11 +384,15 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 
 
 	double externalloss = 0.0;
-	double ADEnergy_Chaint[chain->NAA - 1];
+	double* ADEnergy_Chaint;
 
-	for (int i = 1; i <= chain->NAA - 1; i++) {
-		ADEnergy_Chaint[i - 1] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
-		externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i - 1];
+	if (sim_params->protein_model.external_potential_type == 5){
+		ADEnergy_Chaint = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model));
+
+		for (int i = 1; i <= chain->NAA-1; i++){
+			//ADEnergy_Chaint[i] = chaint->ergt[i];
+			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-1];
+		}		
 	}
 		
 
@@ -389,7 +402,10 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
-	if (externalloss < -10) external_k = 0.09 * external_k;
+	//if (externalloss < -10) external_k = 0.09 * external_k;
+
+	if (chain->Erg(0, 0) > 20 || externalloss < -10) external_k = 0.05 * external_k;
+	//if (chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 
 	//if (moved && allowed(chain, chaint, biasmap, 1, chain->NAA - 1, logLstar, currE, sim_params)) {
 	if (externalloss < 0.0 && externalloss * RAND_MAX * external_k < -rand()) {

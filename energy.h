@@ -48,6 +48,8 @@ void vectorProduct(float *a, float *b, float *c);
 void normalizedVector(float *a, float *b, float *v);
 
 float scoreSideChain(int nbRot, int nbAtoms, double *acharges, int *aTypes,  double coords[nbRot][nbAtoms][3], AA *a);
+double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], int atypes[nbAtoms],  double coords[nbRot][nbAtoms][3], AA *a, double* setCoords, int ind);
+
 
 int getindex(int x, int y, int z);
 
@@ -59,6 +61,8 @@ double energy2( Biasmap *,AA *,  AA *, model_params *mod_params);
 /* the energy terms from terms that don't involve 1 or 2 residues */
 double cyclic_energy(AA *, AA *, int);
 double ADenergy(AA *, model_params *mod_params);
+double* ADenergyNoClash(int, int, Chain *, Chaint *, model_params *);
+
 double global_energy(int, int, Chain*, Chaint*,Biasmap *, model_params *mod_params);
 double all_vdw(Biasmap *biasmap, Chain *chain, model_params *mod_params);
 
