@@ -2538,6 +2538,35 @@ double energy1(AA *a, model_params *mod_params)
 }
 
 /* interactions between two amino acids */
+double energy2cyclic(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
+{
+	double d2, retval = 0.0;
+
+	/* Go-type bias potential */
+	
+	if (biasmap->distb && Distb(a->num, b->num) != 0.0)		
+		retval += bias(biasmap, a, b, mod_params);
+	//fprintf(stderr,"e21 %g\n",retval);
+
+    
+	retval += hydrophobic(biasmap,a,b, mod_params);
+	//fprintf(stderr,"e22 %d %d %g\n",a->num,b->num,hydrophobic(biasmap,a,b, mod_params));
+	if (mod_params->use_gamma_atoms != NO_GAMMA) {
+		retval += electrostatic(biasmap,a,b, mod_params);
+		//if (electrostatic(biasmap,a,b, mod_params)>0.02) {
+		//	fprintf(stderr,"e23 %d %d %g\n",a->num,b->num,electrostatic(biasmap,a,b, mod_params));
+		//}
+		retval += sidechain_hbond(biasmap,a,b, mod_params);
+		//fprintf(stderr,"e24 %g\n",retval);
+	}
+
+	retval += exclude_neighbor(b, a, mod_params) + hbond(biasmap, b, a, mod_params) + proline(b, a);
+
+
+	return retval;
+}
+
+/* interactions between two amino acids */
 double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 {
 	double d2, retval = 0.0;
@@ -2566,6 +2595,7 @@ double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 		seqdist = b->num - a->num;
 	else
 		seqdist = 1000 * abs(b->chainid - a->chainid);
+
 	switch ( seqdist) {
 	case 1:
 		retval += exclude_neighbor(a, b, mod_params) + hbond(biasmap,a, b, mod_params) + proline(a, b);

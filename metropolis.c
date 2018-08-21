@@ -64,8 +64,11 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	for (i = start; i <= end; i++){
 
 		for (j = 1; j < chain->NAA; j++) {
-
-			if (j < start || end < j){
+			if (j - i == chain->NAA - 2){
+				q = energy2cyclic(biasmap, (chain->aa) + j, chaint->aat + i, &(sim_params->protein_model));
+			} else if(i - j == chain->NAA - 2){
+				q = energy2cyclic(biasmap,chaint->aat + i, (chain->aa) + j, &(sim_params->protein_model));
+			} else if (j < start || end < j){
 
 				q = energy2(biasmap,chaint->aat + i, (chain->aa) + j, &(sim_params->protein_model));
 			} else if (j > i){
@@ -73,9 +76,13 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 				q = energy2(biasmap,chaint->aat + i, chaint->aat + j, &(sim_params->protein_model));
 			} else if (j == i){
 				q = energy1(chaint->aat + i, &(sim_params->protein_model));
-				if (i==1 || i==chain->NAA-1)
+				if ( ( i==1 || i==chain->NAA-1) && sim_params->protein_model.external_potential_type2 != 4)
 					continue;
-				if (i==start)
+				else if (i==1)
+					q += ramabias(chain->aa + chain->NAA - 1, chaint->aat + i, chaint->aat + i+1);
+				else if (i==chain->NAA-1)
+					q += ramabias(chaint->aat + i - 1, chaint->aat + i, chain->aa +1);
+				else if (i==start)
 					q += ramabias(chain->aa + i-1, chaint->aat + i, chaint->aat + i+1);
 				else if (i==end)
 					q += ramabias(chaint->aat + i-1, chaint->aat + i, chain->aa + i+1);
@@ -87,8 +94,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 			}
 
 			chaint->Ergt(i, j) = q;
-			if (i != 1 || j != chain->NAA - 1) {
-				//loss += sim_params->protein_model.opt_totE_weight * (chain->Erg(i, j) - q);
+			if (i == 1 && j == chain->NAA - 1 && sim_params->protein_model.external_potential_type2 == 4) {
+				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
 				loss += (chain->Erg(i, j) - q);
 			}
 			else {

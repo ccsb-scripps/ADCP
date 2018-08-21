@@ -64,7 +64,8 @@ int getindex(int x, int y, int z);
 /* energy of deformations and interactions within one amino acid */
 double energy1(AA *, model_params *mod_params);
 /* the energy of interactions between between two amino acids */
-double energy2( Biasmap *,AA *,  AA *, model_params *mod_params);
+double energy2(Biasmap *,AA *,  AA *, model_params *mod_params);
+double energy2cyclic(Biasmap *,AA *,  AA *, model_params *mod_params);
 /* the energy terms from terms that don't involve 1 or 2 residues */
 double cyclic_energy(AA *, AA *, int);
 double ADenergy(AA *, model_params *mod_params);
