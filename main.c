@@ -171,7 +171,7 @@ static double calculateRMSD(Chain *chain, Chain *chain2)
 		dist += (chain->aa[i].ca[2] - chain2->aa[i].ca[2])*(chain->aa[i].ca[2] - chain2->aa[i].ca[2]);
 		RMSD += dist;
 	}
-	return sqrt(RMSD / (chain->NAA-1));	
+	return (RMSD / (chain->NAA-1));	
 }
 
 void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params *sim_params)
@@ -197,7 +197,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 		int bestIndex = 0; //Index for last best energy found
 
-		int mutateIndex = 0;
+		int mutateIndex = -99999;
 
 		int stopSignal = 0;
 		int swapInd = 0;
@@ -216,11 +216,11 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		/*optimizing parameters*/
 		int noImprovHeatSteps = 1000000; 
 		int noImprovStopSteps = 40000000;
-		int swapBadSteps = 200000;
-		int swapMutateSteps = 500000;
+		int swapBadSteps = 80000;
+		int swapMutateSteps = 200000;
 		int swapGoodSteps = 200000;
 		double goodEnergyDiff = 5; //5kcal=8.33 3kcal=5
-		double rmsdCutoff = 2.0; // swapping clusters rmsd cutoff
+		double rmsdCutoff = 4.0; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
 		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
 		int annealSteps = 10000;
@@ -477,6 +477,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		}
 		//clean up
 		for (int i = 0; i < swapLength + 1; i++) {
+			fprintf(sim_params->outfile, "-+- %5d CLUSTERS BLOCK %5d -+-\n", swapLength+1, i);
+			tests(swapChains[i], biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 			freemem_chain(swapChains[i]); free(swapChains[i]);
 		}
 
@@ -863,11 +865,11 @@ int main(int argc, char *argv[])
 	//model_param_initialise(&(sim_params.protein_model));
 	model_param_read(sim_params.prm,&(sim_params.protein_model),&(sim_params.flex_params));
 
-
+	ramaprob_initialise();
 	if (sim_params.protein_model.external_potential_type == 5) {
 
 		//Cgridmap_initialise();
-		//transpts_initialise();
+		transpts_initialise();
 		gridbox_initialise();
 
 		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
@@ -1045,6 +1047,9 @@ int main(int argc, char *argv[])
 		for (int atype = 0; atype < sizeof(gridmapvalues) / sizeof(gridmapvalues)[0]; atype++)
 			free(gridmapvalues[atype]);
 	}
+	free(ramaprob);
+	free(alaprob);
+	free(glyprob);
 	fprintf(stderr,"The program has successfully finished in %d seconds. :)  Bye-bye!\n", time(NULL)- startTime);
 	return EXIT_SUCCESS;
 }

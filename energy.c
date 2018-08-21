@@ -85,7 +85,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 
 	for (i = 1; i < chain->NAA; i++){
 		chain->Erg(0, i) = chain->Erg(i, 0) = 0.;
-	//	fprintf(stderr,"%g ",chain->Erg(0,i));
+		fprintf(stderr,"%g ",chain->Erg(0,i));
 	}
 	//fprintf(stderr,"\n");
 
@@ -114,9 +114,13 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 	}
 	//fprintf(stderr,"\n");
 	//fprintf(stderr,"ENERGY1 END\n");
+	for (i = 2; i < chain->NAA - 1; i++){
+		chain->Erg(i, i) += ramabias((chain->aa)+i-1, (chain->aa) + i, (chain->aa) +i+1);
+	}
+
 
 	/* offdiagonal */
-	//fprintf(stderr,"offdiag ");
+	fprintf(stderr,"offdiag ");
 	for (i = 1; i < chain->NAA; i++){
 		for (j = 1; j < i; j++){
 			chain->Erg(i, j) = chain->Erg(j, i) = energy2(biasmap,(chain->aa) + i, (chain->aa) + j, mod_params);
@@ -370,9 +374,9 @@ void biasmap_finalise(Biasmap *biasmap){
 /*make energy grid map smoother*/
 double lowerGridEnergy(double E) {
 	//return E;
-	if (E > 2.71828) {
+	if (E > 2.718) {
 		//return log10f(E) + 9;
-		return log(E) + 1.71828;
+		return log(E) + 1.718;
 	}
 	//if (E > 10) {
 	//	//return log10f(E) + 9;
@@ -494,6 +498,43 @@ void transpts_initialise() {
 	fclose(transpts);
 
 }
+
+void ramaprob_initialise() {
+	FILE *ramaProbFile = NULL;
+	ramaProbFile = fopen("ramaprob.data", "r");
+	char line[256];
+	int i = 0, j = 0;
+	
+	ramaprob = malloc(32400 * sizeof(double));
+	alaprob = malloc(32400 * sizeof(double));	
+	glyprob = malloc(32400 * sizeof(double));
+
+	while (fgets(line, sizeof(line), ramaProbFile)) {
+		char * pch;
+		pch = strtok(line, " ");
+		j = 0;
+		while (pch != NULL)
+		{
+			if (j == 1) {
+				ramaprob[i] = atof(pch);
+			}
+			else if (j == 2) {
+				alaprob[i] = atof(pch);
+			}
+			else if (j == 3) {
+				glyprob[i] = atof(pch);
+			}
+			pch = strtok(NULL, " ");
+			j++;
+		}
+		i++;
+	}
+
+	printf("ramaprob initialise succuss %i \n", transPtsCount);
+	fclose(ramaProbFile);
+
+}
+
 /***********************************************************/
 /****               ENERGY  CONTRIBUTIONS               ****/
 /***********************************************************/
@@ -553,6 +594,45 @@ double stress(AA *a, model_params *mod_params)
 	beta = angle(nca, cac) - mod_params->stress_angle; //1.20427718387608740808;
 	erg += mod_params->stress_k * beta * beta;	/* softer than Engh and Huber (2001) */
 	return erg;
+}
+
+double ramabias(AA *prevaa, AA *a, AA *lateraa)
+{
+	double phi = 0.0, psi = 0.0;
+	double energy = 0.0;
+	int segphi = 0;
+	int segpsi = 0;
+	
+	phi = dihedral_rama(prevaa->c, a->n, a->ca, a->c, 1.46);
+	psi = dihedral_rama(a->n, a->ca, a->c, lateraa->n, 1.53);
+
+	//double anglephi = phi * M_180_PI;
+	//double anglepsi = psi * M_180_PI;
+	//int sig = (anglephi>0)? 1:-1;
+	//int segphi = 2 * int(anglephi/2)+sig;
+	//sig = (anglepsi>0)? 1:-1;
+	//int segpsi = 2 * int(anglepsi/2)+sig;
+
+	segphi = (int) ((phi + M_PI)/(2*M_PI_180));
+	segpsi = (int) ((psi + M_PI)/(2*M_PI_180));
+
+	int ind = segphi * 180 + segpsi;
+
+	switch (a->id) {
+		case 'A':
+			energy = alaprob[ind];
+			break;
+		case 'G':
+			energy = glyprob[ind];
+			break;
+		default:
+			energy = ramaprob[ind];
+			break;
+	}
+	
+	//fprintf(stderr,"aaa num %d id %c ind %d energy %g segphi %d segpsi %d phi %g psi %g \n",a->num, a->id, ind, -energy, segphi, segpsi, anglephi, anglepsi);
+	energy = energy > 3.91 ? energy - 3.91 : 0.0;
+	return -energy;	/* RMSD by Ho et al. (2004) */
 }
 
 

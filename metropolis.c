@@ -73,6 +73,14 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 				q = energy2(biasmap,chaint->aat + i, chaint->aat + j, &(sim_params->protein_model));
 			} else if (j == i){
 				q = energy1(chaint->aat + i, &(sim_params->protein_model));
+				if (i==1 || i==chain->NAA-1)
+					continue;
+				if (i==start)
+					q += ramabias(chain->aa + i-1, chaint->aat + i, chaint->aat + i+1);
+				else if (i==end)
+					q += ramabias(chaint->aat + i-1, chaint->aat + i, chain->aa + i+1);
+				else
+					q += ramabias(chaint->aat + i-1, chaint->aat + i, chaint->aat + i+1);
 			} else {	/* double jeopardy, (start <= j < i) */
 				chaint->Ergt(i, j) = chaint->Ergt(j, i);
 				continue;
@@ -129,7 +137,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	
 	
 
-	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss * external_k) * RAND_MAX < rand()) {
+	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss) * RAND_MAX < rand()) {
 		//fprintf(stderr," rejected\n", );
 		return 0;	/* disregard rejected changes */
 	}
@@ -140,17 +148,17 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//	return 0;	/* disregard rejected changes */
 	//}
 
-	if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   externalloss * RAND_MAX * external_k < -rand()) {
-		return 0;
-	}
+	//if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   externalloss * RAND_MAX * external_k < -rand()) {
+	//	return 0;
+	//}
 
 
 
 	
-	//if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
-	//	//fprintf(stderr," rejected\n");
-	//	return 0;	/* disregard rejected changes */
-	//}
+	if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
+		//fprintf(stderr," rejected\n");
+		return 0;	/* disregard rejected changes */
+	}
 
 
 	//fprintf(stderr," accepted\n");
@@ -435,6 +443,8 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	        chain->Erg(0, j) = ADEnergy_Chaint[j - 1];
 	    	chain->Erg(0, 0) += chain->Erg(0, j);
 	    }
+
+
 
 		//fprintf(stderr,"translation!!!\n");
 		for (int i = 1; i <= chain->NAA - 1; i++) {

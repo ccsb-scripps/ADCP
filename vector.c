@@ -346,6 +346,22 @@ double dihedral_4(vector a0, vector a1, vector a2, vector a3)
 	return dihedral(a, b, c);
 }
 
+double dihedral_rama(vector a0, vector a1, vector a2, vector a3, double b1)
+{
+	vector a, b, c;
+
+	subtract(a, a1, a0);
+	subtract(b, a2, a1);
+	subtract(c, a3, a2);
+
+	vector ab, bc;
+
+	crossprod(ab, a, b);
+	crossprod(bc, b, c);
+
+	return atan2(dotprod(ab, c) * b1, dotprod(ab, bc));
+}
+
 /* solid angle between three vectors according to Oosterom and Strackee (1983).
 Total: 33 multiplications, 20 additions, 3 sqrt's, and 1 atan2  */
 double excess(vector a, vector b, vector c)

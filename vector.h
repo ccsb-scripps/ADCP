@@ -85,6 +85,7 @@ double angle(vector, vector);
 double dihedral(vector, vector, vector);
 double dihedral_1(vector, vector, vector);
 double dihedral_4(vector, vector, vector, vector);
+double dihedral_rama(vector, vector, vector, vector, double);
 double excess(vector, vector, vector);
 
 /*

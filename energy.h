@@ -26,6 +26,8 @@ int bestRot(Chain *chain);
 void energy_matrix_print(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_initialise(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_finalise(Biasmap *biasmap);
+
+
 double centerX, centerY, centerZ, spacing;
 //double *Nmapvalue, *Omapvalue, *CAmapvalue, *Hmapvalue, *Cmapvalue, *NAmapvalue, *Smapvalue, *emapvalue, *dmapvalue;
 int NX, NY, NZ;
@@ -34,11 +36,14 @@ double targetBest, currTargetEnergy;
 double lowerGridEnergy(double);
 void gridbox_initialise();
 void transpts_initialise();
+void ramaprob_initialise();
+
 double *gridmapvalues[9];
 int transPtsCount;
 double *Xpts;
 double *Ypts;
 double *Zpts;
+double *ramaprob, *alaprob, *glyprob;
 
 void gridmap_initialise(char *, int);
 
@@ -47,9 +52,11 @@ double gridenergy(double X, double Y, double Z, int i, double charge);
 void vectorProduct(float *a, float *b, float *c);
 void normalizedVector(float *a, float *b, float *v);
 
+int checkClash(double x, double y, double z, double *setCoords, int ind);
 float scoreSideChain(int nbRot, int nbAtoms, double *acharges, int *aTypes,  double coords[nbRot][nbAtoms][3], AA *a);
 double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], int atypes[nbAtoms],  double coords[nbRot][nbAtoms][3], AA *a, double* setCoords, int ind);
 
+double ramabias(AA *, AA *, AA *);
 
 int getindex(int x, int y, int z);
 
