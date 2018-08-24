@@ -9,5 +9,6 @@
 
 /* MC move and metropolis criteria */
 void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params);
+int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params);
 void move(Chain *chain, Chaint *chaint, Biasmap *biasmap,double logLstar, double *currE,int changeamp, simulation_params *sim_params);
 void finalize(Chain *chain, Chaint *chaint, Biasmap *biasmap);

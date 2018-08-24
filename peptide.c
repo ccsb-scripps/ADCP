@@ -885,12 +885,20 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	matrix t = { { 1., 0., 0. },{ 0., 1., 0. },{ 0., 0., 1. } };
 
 	int randx = 0, randy = 0, randz = 0;
+	//double randx = 0., randy = 0., randz = 0.;
 	//if external AD grid choose the 8 corners of the box as starting position
 	if ((sim_params->protein_model).external_potential_type == 5) {
 		//fprintf(stderr, "random number %g %g %g \n", (double)rand(), RAND_MAX, sim_params->seed);
 		randx = (round((double)rand() / RAND_MAX) * 2 - 1);
 		randy = (round((double)rand() / RAND_MAX) * 2 - 1);
 		randz = (round((double)rand() / RAND_MAX) * 2 - 1);
+		//randx = (((double)rand() / RAND_MAX) * 2 - 1);
+		//randy = (((double)rand() / RAND_MAX) * 2 - 1);
+		//randz = (((double)rand() / RAND_MAX) * 2 - 1);
+		//t = { { randx, 0., 0. },{ 0., randy, 0. },{ 0., 0, randz} };
+		t[0][0] = randx;
+		t[1][1] = randy;
+		t[2][2] = randz;
 	}
 	/* let's get rid of the separator, '_'
 	   and also take notes of which chain the amino acid is in */
@@ -950,7 +958,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 
 
 	for (i = 1; i < chain->NAA; i++) {
-		//chain->aa[i].SCRot = 0;
+		chain->aa[i].SCRot = 0;
 		
 
 		if (chain->aa[i].etc & PSI)
@@ -969,6 +977,8 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 		if ((i & 0x3F) == 0)
 			fixtriplet(t);
 	}
+
+
 
 	//fprintf(stderr,"XAA\n");
 	//for (i = 0; i < chain->NAA; i++) {
@@ -992,7 +1002,7 @@ void build_peptide_from_sequence(Chain * chain, Chaint *chaint, char *str, simul
 	//	fprintf(stderr,"\n");
 	//}
 	//fprintf(stderr,"END XAA_PREV\n");
-	chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;
+	//chain->aa[0].ca[0] = chain->aa[0].ca[1] = chain->aa[0].ca[2] = 0.0;
 	
 	if ((sim_params->protein_model).external_potential_type == 5 && transPtsCount!=0) {
 		//srand(sim_params->seed);
@@ -2262,6 +2272,7 @@ int i,j;
     to->aa[j].etc = from->aa[j].etc;
     to->aa[j].chi1 = from->aa[j].chi1;
     to->aa[j].chi2 = from->aa[j].chi2;
+	to->aa[j].SCRot = from->aa[j].SCRot;
     for(i = 0; i < 3; i++){
       to->aa[j].h[i] = from->aa[j].h[i];	
 	  to->aa[j].n[i] =  from->aa[j].n[i];		

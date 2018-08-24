@@ -1917,7 +1917,11 @@ void cm_ideal_4(Chain *chain, Biasmap *biasmap,simulation_params *sim_params, vo
 void ergtot(Chain *chain,Biasmap *biasmap, simulation_params *sim_params, void *mpi_comm)
 {	/*changed, can be removed */ 
 	double tote = totenergy(chain);
-	fprintf(sim_params->outfile, "Energy = totalE %.6f ( diagnolE %.6f extE %.6f firstlastE %.6f) Rotmers (%i)\n", tote, locenergy(chain), extenergy(chain), firstlastenergy(chain), bestRot(chain));
+	fprintf(sim_params->outfile, "Energy = totalE %.6f ( diagnolE %.6f extE %.6f firstlastE %.6f) Rotamers:", tote, locenergy(chain), extenergy(chain), firstlastenergy(chain));
+	for (int i = 1; i < chain->NAA -1; i++) {
+		fprintf(sim_params->outfile, " %d", (chain->aa + i)->SCRot);
+	}
+	fprintf(sim_params->outfile, "\n");
 	fprintf(stderr, "totalE %.6f extE %.6f \n", tote, extenergy(chain));
 }
 

@@ -93,7 +93,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 	chain->Erg(0, 0) = 0.0;
 
 	double* ADenergies;
-	ADenergies = ADenergyNoClash(1, chain->NAA-1, chain, NULL, mod_params);
+	ADenergies = ADenergyNoClash(1, chain->NAA-1, chain, NULL, mod_params, 0);
 
 	for (int i = 1; i < chain->NAA; i++) {
 		chain->Erg(0, i) = ADenergies[i-1];
@@ -159,22 +159,6 @@ double locenergy(Chain *chain)
 		toten += chain->Erg(i, i);
 
 	return toten;
-}
-
-int bestRot(Chain *chain)
-{
-	int i;
-	int Rotts=0;
-	int digits = 1;
-	//sprintf(Rots, "%i", (((chain->aa) + 1)->SCRot));
-	for (i = 1; i < chain->NAA; i++) {
-		if ((((chain->aa) + i)->SCRot) > 9 || (((chain->aa) + i)->SCRot) < 0) {
-			(((chain->aa) + i)->SCRot) = 0;
-		}
-		Rotts += (((chain->aa) + i)->SCRot) * digits;
-		digits = digits * 10;
-	}
-	return Rotts;
 }
 
 double extenergy(Chain *chain)
@@ -589,10 +573,11 @@ double stress(AA *a, model_params *mod_params)
 
 	subtract(nca, a->ca, a->n);
 	subtract(cac, a->c, a->ca);
-
+	
 	/* ground-state angle is 180 - 111 = 69 (EH2001) */
 	beta = angle(nca, cac) - mod_params->stress_angle; //1.20427718387608740808;
 	erg += mod_params->stress_k * beta * beta;	/* softer than Engh and Huber (2001) */
+	//if (a->id == 1) erg = erg * 200;
 	return erg;
 }
 
@@ -631,7 +616,7 @@ double ramabias(AA *prevaa, AA *a, AA *lateraa)
 	}
 	
 	//fprintf(stderr,"aaa num %d id %c ind %d energy %g segphi %d segpsi %d phi %g psi %g \n",a->num, a->id, ind, -energy, segphi, segpsi, anglephi, anglepsi);
-	energy = energy > 3.91 ? energy - 3.91 : 0.0;
+	//energy = energy < -3.91 ? energy + 3.91 : 0.0;
 	return -energy;	/* RMSD by Ho et al. (2004) */
 }
 
@@ -1467,7 +1452,7 @@ void normalizedVector(float *a, float *b, float *v) {
 
 
 //score side chain and also set gamma position
-float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  double coords[nbRot][nbAtoms][3], AA *a)
+float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  double coords[nbRot][nbAtoms][3], AA *a,  int numRand)
 {
 	int i, j;
 	float n; /* used to normalized vectors */
@@ -1498,15 +1483,14 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 		if (atypes[nn]!=3) nbHeavyAtoms++;
 	}
 	/*scan a little bit more space, number of random trials*/
-	int numRand = 3;
 	for (int pertInd=0; pertInd < numRand; pertInd++){
 		if (pertInd!=0){
-			randx = rand() / (double) RAND_MAX;
-			randy = rand() / (double) RAND_MAX;
-			randz = rand() / (double) RAND_MAX;
-			N[0] = a->n[0] + randx - 0.5;
-			N[1] = a->n[1] + randy - 0.5;
-			N[2] = a->n[2] + randz - 0.5;
+			randx = 0.5 * rand() / (double) RAND_MAX;
+			randy = 0.5 * rand() / (double) RAND_MAX;
+			randz = 0.5 * rand() / (double) RAND_MAX;
+			N[0] = a->n[0] + randx - 0.25;
+			N[1] = a->n[1] + randy - 0.25;
+			N[2] = a->n[2] + randz - 0.25;
 		}
 
 		//N[3] = { a->n[0] + randx - 0.5, a->n[1] + randy - 0.5, a->n[2] + randz - 0.5 }
@@ -1624,7 +1608,7 @@ int checkClash(double x, double y, double z, double *setCoords, int ind){
 }
 
 
-double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], int atypes[nbAtoms],  double coords[nbRot][nbAtoms][3], AA *a, double* setCoords, int ind)
+double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], int atypes[nbAtoms],  double coords[nbRot][nbAtoms][3], AA *a, double* setCoords, int ind, int numRand)
 {
 	int i, j;
 	double n; /* used to normalized vectors */
@@ -1655,15 +1639,14 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 		if (atypes[nn]!=3) nbHeavyAtoms++;
 	}
 	/*scan a little bit more space, number of random trials*/
-	int numRand = 3;
 	for (int pertInd=0; pertInd < numRand; pertInd++){
 		if (pertInd!=0){
-			randx = rand() / (double) RAND_MAX;
-			randy = rand() / (double) RAND_MAX;
-			randz = rand() / (double) RAND_MAX;
-			N[0] = a->n[0] + randx - 0.5;
-			N[1] = a->n[1] + randy - 0.5;
-			N[2] = a->n[2] + randz - 0.5;
+			randx = 0.5 * rand() / (double) RAND_MAX;
+			randy = 0.5 * rand() / (double) RAND_MAX;
+			randz = 0.5 * rand() / (double) RAND_MAX;
+			N[0] = a->n[0] + randx - 0.25;
+			N[1] = a->n[1] + randy - 0.25;
+			N[2] = a->n[2] + randz - 0.25;
 		}
 
 		//N[3] = { a->n[0] + randx - 0.5, a->n[1] + randy - 0.5, a->n[2] + randz - 0.5 }
@@ -1904,154 +1887,7 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 }
 
 
-double ADenergy(AA *a, model_params *mod_params)
-{
-	/* only calculate for constrained amino acids */
-	/* TODO: add constraint type other than 1 */
-	//if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
-	/* C-O-M or n, ca, c */
-	//gridmap_initialise();
-	vector com;	/* N-Ca and Ca-C bonds */
-	double erg = 0.0;
-	double dr;
-
-	add(com, a->ca, a->n);
-	add(com, com, a->c);
-	scale(com,1.0/3.0, com);
-
-	//fprintf(stderr, "calculating constraint on amino acid %d", a->num);
-	// AutoDock Grid Energy
-	//fprintf(stderr, "restype %c \n", a->id);
-	double exC = 0.0, exCa = 0.0, exN = 0.0, exO = 0.0, exCb = 0.0, exH = 0.0;
-
-	/* element types are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
-	double CCharge = 0.241, CaCharge = 0.186, NCharge = -0.346, OCharge = -0.271, CbCharge = 0.050, HCharge = 0.163;
-	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", a->c[0], a->c[1], a->c[2], exO);
-
-	if (a->id == 'G') {
-		CaCharge = 0.218;
-	}
-	else if (a->id == 'S') {
-		CaCharge = 0.219;
-		CbCharge = 0.199;
-	}
-	else if (a->id == 'P') {
-		CaCharge = 0.165;
-		CbCharge = 0.034;
-	}
-	else if (a->id == 'C') {
-		CbCharge = 0.120;
-	}
-	else if (a->id == 'T' || a->id == 'D' || a->id == 'N') {
-		CbCharge = 0.146;
-	}
-
-	if (a->num==1) {
-		HCharge = 0.275;
-		CCharge = 0.484;
-		CaCharge = CaCharge + 0.2;
-	}
-
-	if (a->id != 'P') {
-		exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
-	}
-	exC = gridenergy(a->c[0], a->c[1], a->c[2], 0, CCharge);
-	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-	exCa = gridenergy(a->ca[0], a->ca[1], a->ca[2], 0, CaCharge);
-	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-	exH = gridenergy(a->h[0], a->h[1], a->h[2], 3, HCharge);
-	exCb = gridenergy(a->cb[0], a->cb[1], a->cb[2], 0, CbCharge);
-	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-	exN = gridenergy(a->n[0], a->n[1], a->n[2], 1, NCharge);
-	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-	exO = gridenergy(a->o[0], a->o[1], a->o[2], 2, OCharge);
-	//fprintf(stderr, "energies C %g CA %g N %g O %g \n", exC, exCa, exN, exO);
-	erg = (exC + exCa + exH + exN + exO + exCb);
-	//fprintf(stderr, "bb Energy %g \n", erg);
-	if (erg > 10000000 || erg < -10000000) {
-		fprintf(stderr, "energies C %g CA %g N %g O %g Cb %g H %g", exC, exCa, exN, exO, exCb, exH);
-		stop("Grid energy exceeds limits, something wrong!");
-	}
-
-	
-	double sideChainEnergy = 0.0;
-
-
-	/*Here is a hack, external_r0[0] term 1.x indicate to reconstruct full-atom sidechain score grid energy */
-	if ((int) mod_params->external_r0[0] == 1.0) {
-			//fprintf(stderr, "calculate side chain external energy\n");
-			switch (a->id)
-			{
-			case 'I':
-				//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
-				sideChainEnergy = scoreSideChain(ILE.nbRot, ILE.nbAtoms, ILE.charges, ILE.atypes, ILE.coords, a);
-				break;
-			case 'L':
-				sideChainEnergy = scoreSideChain(LEU.nbRot, LEU.nbAtoms, LEU.charges, LEU.atypes, LEU.coords, a);
-				break;
-			case 'P':
-				sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.charges, PRO.atypes, PRO.coords, a);
-				break;
-			case 'V':
-				//sideChainEnergy = scoreSideChain(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a);
-				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
-				break;
-			case 'F':
-				sideChainEnergy = scoreSideChain(PHE.nbRot, PHE.nbAtoms, PHE.charges, PHE.atypes, PHE.coords, a);
-				break;
-			case 'W':
-				sideChainEnergy = scoreSideChain(TRP.nbRot, TRP.nbAtoms, TRP.charges, TRP.atypes, TRP.coords, a);
-				break;
-			case 'Y':
-				sideChainEnergy = scoreSideChain(TYR.nbRot, TYR.nbAtoms, TYR.charges, TYR.atypes, TYR.coords, a);
-				break;
-			case 'D':
-				sideChainEnergy = scoreSideChain(ASP.nbRot, ASP.nbAtoms, ASP.charges, ASP.atypes, ASP.coords, a);
-				break;
-			case 'E':
-				sideChainEnergy = scoreSideChain(GLU.nbRot, GLU.nbAtoms, GLU.charges, GLU.atypes, GLU.coords, a);
-				break;
-			case 'R':
-				sideChainEnergy = scoreSideChain(ARG.nbRot, ARG.nbAtoms, ARG.charges, ARG.atypes, ARG.coords, a);
-				break;
-			case 'H':
-				sideChainEnergy = scoreSideChain(HIS.nbRot, HIS.nbAtoms, HIS.charges, HIS.atypes, HIS.coords, a);
-				break;
-			case 'K':
-				sideChainEnergy = scoreSideChain(LYS.nbRot, LYS.nbAtoms, LYS.charges, LYS.atypes, LYS.coords, a);
-				break;
-			case 'S':
-				sideChainEnergy = scoreSideChain(SER.nbRot, SER.nbAtoms, SER.charges, SER.atypes, SER.coords, a);
-				//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 2, -0.398);
-				break;
-			case 'T':
-				//sideChainEnergy = scoreSideChain(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a);
-				sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
-				break;
-			case 'C':
-				sideChainEnergy = scoreSideChain(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a);
-				//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
-				break;
-			case 'M':
-				sideChainEnergy = scoreSideChain(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a);
-				break;
-			case 'N':
-				sideChainEnergy = scoreSideChain(ASN.nbRot, ASN.nbAtoms, ASN.charges, ASN.atypes, ASN.coords, a);
-				break;
-			case 'Q':
-				sideChainEnergy = scoreSideChain(GLN.nbRot, GLN.nbAtoms, GLN.charges, GLN.atypes, GLN.coords, a);
-				break;
-			default:
-				break;
-			}
-	}
-	erg += sideChainEnergy;
-	// AD energy is in kcal/mol, scale down kcal/mol to RT!
-	erg = erg / 0.59219;
-	return erg;
-}
-
-double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_params *mod_params)
+double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_params *mod_params, int mod)
 {
 	/* only calculate for constrained amino acids */
 	/* TODO: add constraint type other than 1 */
@@ -2064,10 +1900,16 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 	//double *coordsSet = malloc(21 * chain->NAA * sizeof(double));
 
 	int ind = 0;
-	
+	int numRand = 1;
+	int numDir = 1;
+	if (mod == 1) {
+		numRand = 3;
+		numDir = 2;
+	}
+
 	AA* a;
 	int i, j, m;
-	for (i = 1; i <= chain->NAA-1; i++){
+	for (i = 0; i <= chain->NAA-1; i++){
 		coordsSet[i] = 999.;
 	}
 
@@ -2151,12 +1993,12 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 		energiesbackward[m-start] = 99.0;
 		//fprintf(stderr, "bb Energy %g %g\n", energiesforward[m-start],energiesbackward[m-start]);
 	}
-
-	for (m=0; m<2; m++) {
+	int direction = 1;
+	if (mod == 0) direction = rand()%100<50 ? 1 : 0;
+	for (m=0; m<numDir; m++) {
 		ind = notmovedind;
-		for (j = start; j <= end; j++) {		
-			//if (rand()%100<50)
-			if (m==0)
+		for (j = start; j <= end; j++) {
+			if ((mod == 1 && m == 0) || direction == 0) 
 				i = j;
 			else
 				i = end - j + start;
@@ -2227,59 +2069,59 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 					//sideChainEnergy = scoreSideChainNoClash(ILE.nbRot, ILE.nbAtoms, ILE.charges, ILE.atypes, ILE.coords, a, coordsSet, ind);
 					break;
 				case 'L':
-					sideChainEnergy = scoreSideChainNoClash(LEU.nbRot, LEU.nbAtoms, LEU.charges, LEU.atypes, LEU.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(LEU.nbRot, LEU.nbAtoms, LEU.charges, LEU.atypes, LEU.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'P':
-					sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.charges, PRO.atypes, PRO.coords, a);
+					sideChainEnergy = scoreSideChain(PRO.nbRot, PRO.nbAtoms, PRO.charges, PRO.atypes, PRO.coords, a, numRand);
 					break;
 				case 'V':
-					sideChainEnergy = scoreSideChainNoClash(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(VAL.nbRot, VAL.nbAtoms, VAL.charges, VAL.atypes, VAL.coords, a, coordsSet, ind, numRand);
 					//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 0, 0.012) + gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.012);
 					break;
 				case 'F':
-					sideChainEnergy = scoreSideChainNoClash(PHE.nbRot, PHE.nbAtoms, PHE.charges, PHE.atypes, PHE.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(PHE.nbRot, PHE.nbAtoms, PHE.charges, PHE.atypes, PHE.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'W':
-					sideChainEnergy = scoreSideChainNoClash(TRP.nbRot, TRP.nbAtoms, TRP.charges, TRP.atypes, TRP.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(TRP.nbRot, TRP.nbAtoms, TRP.charges, TRP.atypes, TRP.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'Y':
-					sideChainEnergy = scoreSideChainNoClash(TYR.nbRot, TYR.nbAtoms, TYR.charges, TYR.atypes, TYR.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(TYR.nbRot, TYR.nbAtoms, TYR.charges, TYR.atypes, TYR.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'D':
-					sideChainEnergy = scoreSideChainNoClash(ASP.nbRot, ASP.nbAtoms, ASP.charges, ASP.atypes, ASP.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(ASP.nbRot, ASP.nbAtoms, ASP.charges, ASP.atypes, ASP.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'E':
-					sideChainEnergy = scoreSideChainNoClash(GLU.nbRot, GLU.nbAtoms, GLU.charges, GLU.atypes, GLU.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(GLU.nbRot, GLU.nbAtoms, GLU.charges, GLU.atypes, GLU.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'R':
-					sideChainEnergy = scoreSideChainNoClash(ARG.nbRot, ARG.nbAtoms, ARG.charges, ARG.atypes, ARG.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(ARG.nbRot, ARG.nbAtoms, ARG.charges, ARG.atypes, ARG.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'H':
-					sideChainEnergy = scoreSideChainNoClash(HIS.nbRot, HIS.nbAtoms, HIS.charges, HIS.atypes, HIS.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(HIS.nbRot, HIS.nbAtoms, HIS.charges, HIS.atypes, HIS.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'K':
-					sideChainEnergy = scoreSideChainNoClash(LYS.nbRot, LYS.nbAtoms, LYS.charges, LYS.atypes, LYS.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(LYS.nbRot, LYS.nbAtoms, LYS.charges, LYS.atypes, LYS.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'S':
-					sideChainEnergy = scoreSideChainNoClash(SER.nbRot, SER.nbAtoms, SER.charges, SER.atypes, SER.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(SER.nbRot, SER.nbAtoms, SER.charges, SER.atypes, SER.coords, a, coordsSet, ind, numRand);
 					//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 2, -0.398);
 					break;
 				case 'T':
-					sideChainEnergy = scoreSideChainNoClash(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(THR.nbRot, THR.nbAtoms, THR.charges, THR.atypes, THR.coords, a, coordsSet, ind, numRand);
 					//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
 					break;
 				case 'C':
-					sideChainEnergy = scoreSideChainNoClash(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a, coordsSet, ind, numRand);
 					//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
 					break;
 				case 'M':
-					sideChainEnergy = scoreSideChainNoClash(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'N':
-					sideChainEnergy = scoreSideChainNoClash(ASN.nbRot, ASN.nbAtoms, ASN.charges, ASN.atypes, ASN.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(ASN.nbRot, ASN.nbAtoms, ASN.charges, ASN.atypes, ASN.coords, a, coordsSet, ind, numRand);
 					break;
 				case 'Q':
-					sideChainEnergy = scoreSideChainNoClash(GLN.nbRot, GLN.nbAtoms, GLN.charges, GLN.atypes, GLN.coords, a, coordsSet, ind);
+					sideChainEnergy = scoreSideChainNoClash(GLN.nbRot, GLN.nbAtoms, GLN.charges, GLN.atypes, GLN.coords, a, coordsSet, ind, numRand);
 					break;
 				default:
 					break;
@@ -2317,20 +2159,22 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 
 	}
 
-	double totE1 = 0.;
-	double totE2 = 0.;
-	for(m=start; m<=end; m++){
-		totE1 += energiesforward[m-start];
-		totE2 += energiesbackward[m-start];
-		//fprintf(stderr, "bb Energy %g %g\n", energiesforward[m-start],energiesbackward[m-start]);
-	}
-	//fprintf(stderr, "bb Energy %g %g\n", totE1,totE2);
-	//free(coordsSet);
+	//double totE1 = 0.;
+	//double totE2 = 0.;
+	//for(m=start; m<=end; m++){
+	//	totE1 += energiesforward[m-start];
+	//	totE2 += energiesbackward[m-start];
+	//	//fprintf(stderr, "bb Energy %g %g\n", energiesforward[m-start],energiesbackward[m-start]);
+	//}
+	////fprintf(stderr, "bb Energy %g %g\n", totE1,totE2);
+	////free(coordsSet);
 	double* ADenergies;
-	if (totE1<totE2)		
-		ADenergies = energiesforward;
-	else
-		ADenergies = energiesbackward;
+	//if (totE1<totE2)		
+	//	ADenergies = energiesforward;
+	//else
+	//	ADenergies = energiesbackward;
+	
+	ADenergies = energiesforward;
 	return ADenergies;
 	//for(int m=start; m<=end; m++){
 	//	fprintf(stderr, "bb Energy %g %d %d\n", energiesforward[m-start],start,end);

@@ -22,7 +22,6 @@ double extenergy(Chain *chain);
 double targetenergy(Chain *chain);
 double firstlastenergy(Chain *chain);
 
-int bestRot(Chain *chain);
 void energy_matrix_print(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_initialise(Chain *,Biasmap *, model_params *mod_params);
 void biasmap_finalise(Biasmap *biasmap);
@@ -53,8 +52,8 @@ void vectorProduct(float *a, float *b, float *c);
 void normalizedVector(float *a, float *b, float *v);
 
 int checkClash(double x, double y, double z, double *setCoords, int ind);
-float scoreSideChain(int nbRot, int nbAtoms, double *acharges, int *aTypes,  double coords[nbRot][nbAtoms][3], AA *a);
-double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], int atypes[nbAtoms],  double coords[nbRot][nbAtoms][3], AA *a, double* setCoords, int ind);
+float scoreSideChain(int nbRot, int nbAtoms, double *acharges, int *aTypes,  double coords[nbRot][nbAtoms][3], AA *a,  int numRand);
+double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], int atypes[nbAtoms],  double coords[nbRot][nbAtoms][3], AA *a, double* setCoords, int ind, int numRand);
 
 double ramabias(AA *, AA *, AA *);
 
@@ -68,8 +67,7 @@ double energy2(Biasmap *,AA *,  AA *, model_params *mod_params);
 double energy2cyclic(Biasmap *,AA *,  AA *, model_params *mod_params);
 /* the energy terms from terms that don't involve 1 or 2 residues */
 double cyclic_energy(AA *, AA *, int);
-double ADenergy(AA *, model_params *mod_params);
-double* ADenergyNoClash(int, int, Chain *, Chaint *, model_params *);
+double* ADenergyNoClash(int, int, Chain *, Chaint *, model_params *, int);
 
 double global_energy(int, int, Chain*, Chaint*,Biasmap *, model_params *mod_params);
 double all_vdw(Biasmap *biasmap, Chain *chain, model_params *mod_params);

@@ -29,6 +29,7 @@
 #define Ergt(I,J)   ergt[(I - start) * chain->NAA + (J)]
 //#define Ergt(I,J)   ergt[(I) * chain->NAA + (J)]
 
+
 /***********************************************************/
 /****           MOVES AND METROPOLIS CRITERIA           ****/
 /***********************************************************/
@@ -52,7 +53,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//double ADEnergy_Chaint[end-start+1];
 	double* ADEnergy_Chaint;
 	if (sim_params->protein_model.external_potential_type == 5){
-		ADEnergy_Chaint = ADenergyNoClash(start,end,chain,chaint,&(sim_params->protein_model));
+		ADEnergy_Chaint = ADenergyNoClash(start,end,chain,chaint,&(sim_params->protein_model), 0);
 
 		for (i = start; i <= end; i++){
 			//ADEnergy_Chaint[i-start] = chaint->Ergt(0, i);
@@ -64,30 +65,31 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	for (i = start; i <= end; i++){
 
 		for (j = 1; j < chain->NAA; j++) {
-			if (j - i == chain->NAA - 2){
+			if (j - i == chain->NAA - 2 && sim_params->protein_model.external_potential_type2 == 4){
 				q = energy2cyclic(biasmap, (chain->aa) + j, chaint->aat + i, &(sim_params->protein_model));
-			} else if(i - j == chain->NAA - 2){
+			} else if(i - j == chain->NAA - 2 && sim_params->protein_model.external_potential_type2 == 4){
 				q = energy2cyclic(biasmap,chaint->aat + i, (chain->aa) + j, &(sim_params->protein_model));
 			} else if (j < start || end < j){
-
 				q = energy2(biasmap,chaint->aat + i, (chain->aa) + j, &(sim_params->protein_model));
 			} else if (j > i){
 
 				q = energy2(biasmap,chaint->aat + i, chaint->aat + j, &(sim_params->protein_model));
 			} else if (j == i){
 				q = energy1(chaint->aat + i, &(sim_params->protein_model));
-				if ( ( i==1 || i==chain->NAA-1) && sim_params->protein_model.external_potential_type2 != 4)
-					continue;
-				else if (i==1)
-					q += ramabias(chain->aa + chain->NAA - 1, chaint->aat + i, chaint->aat + i+1);
-				else if (i==chain->NAA-1)
-					q += ramabias(chaint->aat + i - 1, chaint->aat + i, chain->aa +1);
-				else if (i==start)
+				if ( ( i==1 || i==chain->NAA-1)){
+					if (sim_params->protein_model.external_potential_type2 != 4)
+						q += 0;
+					else if (i==1)
+						q += ramabias(chain->aa + chain->NAA - 1, chaint->aat + i, chaint->aat + i+1);
+					else if (i==chain->NAA-1)
+						q += ramabias(chaint->aat + i - 1, chaint->aat + i, chain->aa +1);
+				} else if (i == start)
 					q += ramabias(chain->aa + i-1, chaint->aat + i, chaint->aat + i+1);
-				else if (i==end)
+				else if (i == end)
 					q += ramabias(chaint->aat + i-1, chaint->aat + i, chain->aa + i+1);
 				else
 					q += ramabias(chaint->aat + i-1, chaint->aat + i, chaint->aat + i+1);
+
 			} else {	/* double jeopardy, (start <= j < i) */
 				chaint->Ergt(i, j) = chaint->Ergt(j, i);
 				continue;
@@ -120,7 +122,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double internalloss = loss;
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
-	if (chain->Erg(0, 0) > 20 || externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
+	//if (chain->Erg(0, 0) > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
+	if (externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
 	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
@@ -138,26 +141,33 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 
 
-	//loss = loss + (sim_params->protein_model.opt_extE_weight + sim_params->protein_model.opt_totE_weight)*externalloss;
 	//loss = loss + externalloss;
 
+
 	
 	
 
-	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss) * RAND_MAX < rand()) {
-		//fprintf(stderr," rejected\n", );
-		return 0;	/* disregard rejected changes */
-	}
+	//if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * (loss)) * RAND_MAX < external_k * rand()) {
+	//	//fprintf(stderr," rejected\n");
+	//	return 0;	/* disregard rejected changes */
+	//}
 
 	
-	//if (loss < 0.0  && !sim_params->NS &&  loss * RAND_MAX * external_k < -rand()) {
+
+	//if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * loss) * RAND_MAX < rand()) {
 	//	//fprintf(stderr," rejected\n", );
 	//	return 0;	/* disregard rejected changes */
 	//}
 
-	//if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   externalloss * RAND_MAX * external_k < -rand()) {
-	//	return 0;
-	//}
+	
+	if (loss < 0.0  && !sim_params->NS &&  loss * RAND_MAX * external_k < -rand()) {
+		//fprintf(stderr," rejected\n", );
+		return 0;	/* disregard rejected changes */
+	}
+
+	if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   externalloss * RAND_MAX * external_k < -rand()) {
+		return 0;
+	}
 
 
 
@@ -227,14 +237,12 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 	for (int i = 0; i < 3; i++) {
 		movement = transvec[i];
 		for (int j = 1; j < chain->NAA; j++) {
-			//chaint->aat[j].h[i] = chain->aa[j].h[i] + movement;
-			//chaint->aat[j].n[i] = chain->aa[j].n[i] + movement;
-			//chaint->aat[j].ca[i] = chain->aa[j].ca[i] + movement;
-			//chaint->aat[j].c[i] = chain->aa[j].c[i] + movement;
-			//chaint->aat[j].o[i] = chain->aa[j].o[i] + movement;
-			chaint->aat[j].g[i] = chain->aa[j].g[i] + movement;
-			chaint->aat[j].g2[i] = chain->aa[j].g2[i] + movement;
-			//chaint->aat[j].cb[i] = chain->aa[j].cb[i] + movement;
+			if (chaint->aat[j].etc & G__){
+				chaint->aat[j].g[i] += movement;
+			}
+			if (chaint->aat[j].etc & G2_){
+				chaint->aat[j].g2[i] += movement;
+			}
 
 			if (chaint->aat[j].id != 'P') {
 				chaint->aat[j].h[i] += movement;
@@ -256,7 +264,7 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 	//	ADEnergy_Chaint[i - 1] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
 	//}
 
-	ADEnergy_Chaint = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model));
+	ADEnergy_Chaint = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
 
 	//for (int i = 1; i <= chain->NAA-1; i++){
 	//	//ADEnergy_Chaint[i-1] = chaint->Ergt(0, i);;
@@ -300,38 +308,21 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 /* Make a translation move. */
 static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
-
 	/*translational move*/
 	//
 	//double transvec[3][chain->NAA - 1];
 	double transvec[3];
-	for (int i = 1; i < chain->NAA; i++) {
-		//chaint->aat[i].etc = chain->aa[i].etc;
-		//chaint->aat[i].num = chain->aa[i].num;
-		//chaint->aat[i].id = chain->aa[i].id;
-		//chaint->aat[i].chainid = chain->aa[i].chainid;
+	int i;
+	for (i = 1; i < chain->NAA; i++) {
 		chaint->aat[i] = chain->aa[i];
-		//if (i != chain->NAA - 1) {
-		//	transvec[0][i] = chain->aa[i].c[0] - chain->aa[i + 1].c[0];
-		//	transvec[1][i] = chain->aa[i].c[1] - chain->aa[i + 1].c[1];
-		//	transvec[2][i] = chain->aa[i].c[2] - chain->aa[i + 1].c[2];
-		//}
-		//else {
-		//	transvec[0][0] = chain->aa[1].c[0] - chain->aa[i].c[0] / chain->NAA;
-		//	transvec[1][0] = chain->aa[1].c[1] - chain->aa[i].c[1] / chain->NAA;
-		//	transvec[2][0] = chain->aa[1].c[2] - chain->aa[i].c[2] / chain->NAA;
-		//}
-
 	}
-	casttriplet(chaint->xaat[0], chain->xaa[0]);
-	for (int i = 1; i <= chain->NAA - 1; i++) {
-		casttriplet(chaint->xaat[i], chain->xaa[i]);
-	}
-	casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
+	//casttriplet(chaint->xaat[0], chain->xaa[0]);
+	//for (int i = 1; i <= chain->NAA - 1; i++) {
+	//	casttriplet(chaint->xaat[i], chain->xaa[i]);
+	//}
+	//casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
 
-	//copybetween(chaint, chain);
-	double movement = 0.0;
-	int moved = 0;
+	double movement[3];
 	int vecind1 = 0;
 	vecind1 = (int)(((double)rand() / RAND_MAX)*(chain->NAA - 1));
 	int vecind2 = vecind1;
@@ -343,86 +334,54 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	transvec[2] = chain->aa[vecind1].c[2] - chain->aa[vecind2].c[2];
 	double length = (double)rand() / RAND_MAX;
 	//fprintf(stderr, "translational move %g %g %g %d \n", transvec[0][vecind], transvec[1][vecind], transvec[2][vecind],chain->NAA);
-	for (int i = 0; i < 3; i++) {
-		//movement = (double)rand()/ RAND_MAX;		
-
-		//movement = 4 * (movement - 0.5);
+	for (i = 0; i < 3; i++) {	
+		movement[i] = 0.0;
 		if (chain->Erg(0, 0) > 0) {
-			if (sim_params->seq != NULL) {
-				if (length > 0.5) {
-					movement = rand() / RAND_MAX - 0.5;
-				}
-				else movement = transvec[i] ;
-			}
-			if (length > 0.3) {
-				//movement = 5 * (length - 0.1);
-				movement = 0.4 * rand() / RAND_MAX - 0.2;
+			if (length > 0.2) {
+				movement[i] = 0.4 * rand() / RAND_MAX - 0.2;
 			}
 			else {
-				//movement = 6 * rand() / RAND_MAX - 3;
-				movement = transvec[i] * length / abs(vecind2 - vecind1);
+				movement[i] = transvec[i] * length / abs(vecind2 - vecind1);
 			}
 		}
 		else {
-			if (length > 0.4) {
-				//movement = 5 * (length - 0.1);
-				movement = 0.5 * length - 0.35;
+			if (length > 0.2) {
+				movement[i] = 0.4 * rand() / RAND_MAX - 0.2;
 			}
 			else {
-				//movement = 6 * rand() / RAND_MAX - 3;
-				movement = transvec[i] * length / abs(vecind2 - vecind1);
+				movement[i] = transvec[i] * length / abs(vecind2 - vecind1);
 			}
-			//movement = 0.2 *(rand()/RAND_MAX) - 0.1;
-			//return 0;
-			//movement = transvec[i] * (length -0.5);
-		}
-		
-		//
-		moved = 1;
+		}	
 		for (int j = 1; j < chain->NAA; j++) {
-		    //chaint->aat[j].h[i] = chain->aa[j].h[i] + movement;
-			//chaint->aat[j].n[i] = chain->aa[j].n[i] + movement;
-			//chaint->aat[j].ca[i] = chain->aa[j].ca[i] + movement;
-			//chaint->aat[j].c[i] = chain->aa[j].c[i] + movement;
-			//chaint->aat[j].o[i] = chain->aa[j].o[i] + movement;
-			chaint->aat[j].g[i] = chain->aa[j].g[i] + movement;
-			chaint->aat[j].g2[i] = chain->aa[j].g2[i] + movement;
-			//chaint->aat[j].cb[i] = chain->aa[j].cb[i] + movement;
-
-			if (chaint->aat[j].id != 'P') {
-				chaint->aat[j].h[i] += movement;
+			if (chaint->aat[j].etc & G__){
+				chaint->aat[j].g[i] += movement[i];
 			}
-			chaint->aat[j].n[i] += movement;
-			chaint->aat[j].ca[i] += movement;
-			chaint->aat[j].c[i] += movement;
-			chaint->aat[j].o[i] += movement;
+			if (chaint->aat[j].etc & G2_){
+				chaint->aat[j].g2[i] += movement[i];
+			}
+			if (chaint->aat[j].id != 'P') {
+				chaint->aat[j].h[i] += movement[i];
+			}
+			chaint->aat[j].n[i] += movement[i];
+			chaint->aat[j].ca[i] += movement[i];
+			chaint->aat[j].c[i] += movement[i];
+			chaint->aat[j].o[i] += movement[i];
 			if (chaint->aat[j].id != 'G') {
-				chaint->aat[j].cb[i] += movement;
+				chaint->aat[j].cb[i] += movement[i];
 			}
 
 		}
 	}
-
-
-
-	//double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
-
 
 	double externalloss = 0.0;
-	//double ADEnergy_Chaint[chain->NAA-1];
 	double* ADEnergy_Chaint;
 	if (sim_params->protein_model.external_potential_type == 5){
-		ADEnergy_Chaint = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model));
-
-		for (int i = 1; i <= chain->NAA-1; i++){
-			//ADEnergy_Chaint[i-1] = chaint->Ergt(0, i);;
-			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-1];
-		}		
+		ADEnergy_Chaint = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
+		for (i = 1; i <= chain->NAA-1; i++){
+			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-1];			
+		}	
 	}
-		
-
 	//if loss is negative, it's worse, bad
-	//double externalloss = chain->Erg(0, 0) - transExtEne;
 
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
@@ -437,11 +396,12 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	}
 
 	else {
-		casttriplet(chain->xaa[0], chaint->xaat[0]);
 
-		for (int i = 1; i <= chain->NAA - 1; i++) {
-			casttriplet(chain->xaa[i], chaint->xaat[i]);
-		}
+		//casttriplet(chain->xaa_prev[chain->aa[1].chainid], chaint->xaat_prev[chain->aa[1].chainid]);
+		//
+		//for (int i = 0; i <= chain->NAA - 1; i++) {
+		//	casttriplet(chain->xaa[i], chaint->xaat[i]);
+		//}
 
 
 	    chain->Erg(0, 0) = 0.0;
@@ -450,16 +410,128 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	        chain->Erg(0, j) = ADEnergy_Chaint[j - 1];
 	    	chain->Erg(0, 0) += chain->Erg(0, j);
 	    }
-
-
-
-		//fprintf(stderr,"translation!!!\n");
+		
 		for (int i = 1; i <= chain->NAA - 1; i++) {
 			chain->aa[i] = chaint->aat[i];
 		}
 		//copybetween(chain, chaint);
 		return 1;
 	}
+}
+
+/* Make a translation move. */
+int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+{
+	/*translational optimization*/
+	//
+	//double transvec[3][chain->NAA - 1];
+	double transvec[3];
+	int i;
+	for (i = 1; i < chain->NAA; i++) {
+		chaint->aat[i] = chain->aa[i];
+	}
+	//casttriplet(chaint->xaat[0], chain->xaa[0]);
+	//for (i = 1; i <= chain->NAA - 1; i++) {
+	//	casttriplet(chaint->xaat[i], chain->xaa[i]);
+	//}
+	//casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
+	
+	double movement[3];
+	int noImprovStep = 0;
+	double currExtE = 0.0;
+	double *currADEnergy, *ADEnergy_Chaint;
+	double extE = chain->Erg(0,0);
+	int step = 0;
+	for (step = 0; step < 30; step++) {		
+		
+		if (noImprovStep == 5) break;
+		for (i = 0; i < 3; i++) {
+			if (step == 0) movement[i] = 0.0;
+			if (step == 1) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
+			for (int j = 1; j < chain->NAA; j++) {
+				if (chaint->aat[j].etc & G__){
+					chaint->aat[j].g[i] += movement[i];
+				}
+				if (chaint->aat[j].etc & G2_){
+					chaint->aat[j].g2[i] += movement[i];
+				}
+				if (chaint->aat[j].id != 'P') {
+					chaint->aat[j].h[i] += movement[i];
+				}
+				chaint->aat[j].n[i] += movement[i];
+				chaint->aat[j].ca[i] += movement[i];
+				chaint->aat[j].c[i] += movement[i];
+				chaint->aat[j].o[i] += movement[i];
+				if (chaint->aat[j].id != 'G') {
+					chaint->aat[j].cb[i] += movement[i];
+				}
+			}
+		}
+		currADEnergy = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 1);
+		currExtE = 0.0;
+		for (i = 1; i <= chain->NAA-1; i++){
+			currExtE += currADEnergy[i-1];
+			//fprintf(stderr,"%g !!!", currADEnergy[i-1]);
+		}
+		//fprintf(stderr,"translation %g \n!!!", currExtE);
+		if (currExtE < extE) {
+		//find better energy
+			extE = currExtE;
+			ADEnergy_Chaint = currADEnergy;
+			noImprovStep = 0;
+			for (i = 0; i < 3; i++) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
+		} else {
+		//redo the change and make the step smaller
+			for (i = 0; i < 3; i++) {
+				for (int j = 1; j < chain->NAA; j++) {
+					if (chaint->aat[j].etc & G__){
+						chaint->aat[j].g[i] -= movement[i];
+					}
+					if (chaint->aat[j].etc & G2_){
+						chaint->aat[j].g2[i] -= movement[i];
+					}
+					if (chaint->aat[j].id != 'P') {
+						chaint->aat[j].h[i] -= movement[i];
+					}
+					chaint->aat[j].n[i] -= movement[i];
+					chaint->aat[j].ca[i] -= movement[i];
+					chaint->aat[j].c[i] -= movement[i];
+					chaint->aat[j].o[i] -= movement[i];
+					if (chaint->aat[j].id != 'G') {
+						chaint->aat[j].cb[i] -= movement[i];
+					}
+				}
+				if (rand()%100 > 20)
+					movement[i] = -movement[i]/2;	
+			}
+			noImprovStep += 1;
+		}
+		//fprintf(stderr,"translation %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
+	}
+	if (extE - chain->Erg(0,0) > -0.00001) return 0;
+	//casttriplet(chain->xaa_prev[chain->aa[1].chainid], chaint->xaat_prev[chain->aa[1].chainid]);
+	//
+	//for (int i = 0; i <= chain->NAA - 1; i++) {
+	//	casttriplet(chain->xaa[i], chaint->xaat[i]);
+	//}
+
+
+	chain->Erg(0, 0) = 0.0;
+
+	for (int j = 1; j < chain->NAA; j++) {
+	    chain->Erg(0, j) = ADEnergy_Chaint[j - 1];
+	 	chain->Erg(0, 0) += chain->Erg(0, j);
+	}
+
+
+
+	
+	for (int i = 1; i <= chain->NAA - 1; i++) {
+		chain->aa[i] = chaint->aat[i];
+	}
+	//copybetween(chain, chaint);
+	return step;
+	
 }
 
 
@@ -480,6 +552,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 		chaint->aat[i].num = chain->aa[i].num;
 		chaint->aat[i].id = chain->aa[i].id;
 		chaint->aat[i].chainid = chain->aa[i].chainid;
+		chaint->aat[i].SCRot = chain->aa[i].SCRot;
 	}
 	//}
 
@@ -766,7 +839,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 		/* CA_start->CA_end vector for internal crankshaft */
 		subtract(a, chain->aa[end].ca, chain->aa[start].ca);
 		normalize(a);
-	} else
+	} else 
 		/* random vector for pivot at chain end */
 		randvector(a);
 
@@ -883,7 +956,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 			amplitude *= 1.1;
 		}*/
 	}
-	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 5 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 20 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 	//	//fprintf(stderr, "translation!\n");
