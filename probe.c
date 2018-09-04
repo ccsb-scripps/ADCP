@@ -1918,7 +1918,7 @@ void ergtot(Chain *chain,Biasmap *biasmap, simulation_params *sim_params, void *
 {	/*changed, can be removed */ 
 	double tote = totenergy(chain);
 	fprintf(sim_params->outfile, "Energy = totalE %.6f ( diagnolE %.6f extE %.6f firstlastE %.6f) Rotamers:", tote, locenergy(chain), extenergy(chain), firstlastenergy(chain));
-	for (int i = 1; i < chain->NAA -1; i++) {
+	for (int i = 1; i <= chain->NAA -1; i++) {
 		fprintf(sim_params->outfile, " %d", (chain->aa + i)->SCRot);
 	}
 	fprintf(sim_params->outfile, "\n");
