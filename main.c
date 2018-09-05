@@ -165,7 +165,7 @@ static double calculateRMSD(Chain *chain, Chain *chain2)
 	//return 3.5;
 	double RMSD = 0;
 	double dist = 0;
-	for (int i = 0; i < chain->NAA; i++) {
+	for (int i = 1; i < chain->NAA; i++) {
 		dist = (chain->aa[i].ca[0] - chain2->aa[i].ca[0])*(chain->aa[i].ca[0] - chain2->aa[i].ca[0]);
 		dist += (chain->aa[i].ca[1] - chain2->aa[i].ca[1])*(chain->aa[i].ca[1] - chain2->aa[i].ca[1]);
 		dist += (chain->aa[i].ca[2] - chain2->aa[i].ca[2])*(chain->aa[i].ca[2] - chain2->aa[i].ca[2]);
@@ -325,7 +325,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				lastIndex = currIndex;
 
 				//write to swap pool
-				for (ind = 0; ind <= swapLength; ++ind) {
+				for (ind = 0; ind < swapLength; ind++) {
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
 					if (calculateRMSD(swapChains[ind], chain) < rmsdCutoff) {
 						inCache = 1;
@@ -411,7 +411,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				fprintf(stderr, "swap out no improv curr %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 			}
 			else if (currTargetEnergy - targetBest <= goodEnergyDiff) {
-				for (ind = 0; ind < swapLength; ++ind) {
+				for (ind = 0; ind < swapLength; ind++) {
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
 					if (calculateRMSD(swapChains[ind], chain) < rmsdCutoff) {
 						inCache = 1;
@@ -621,8 +621,9 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 			tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 		}
-		freemem_chain(chain2); free(chain2);
+		
 	}
+	freemem_chain(chain2); free(chain2);
 }
 
 char *read_options(int argc, char *argv[], simulation_params *sim_params)

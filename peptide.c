@@ -816,7 +816,7 @@ void aat_init(Chain * chain, Chaint * chaint){
   if(sizeof(chaint)->aat != chain->NAA * sizeof(AA)){
     (chaint)->aat = (AA *) realloc((chaint)->aat, chain->NAA * sizeof(AA));
     (chaint)->xaat = (triplet *) realloc((chaint)->xaat, chain->NAA * sizeof(triplet));
-    (chaint)->ergt = (double *) realloc((chaint)->ergt, 5 * chain->NAA * sizeof(double));
+    (chaint)->ergt = (double *) realloc((chaint)->ergt, chain->NAA * chain->NAA * sizeof(double));
     int i;	
     for (i = 1; i < chain->NAA; i++) {
 	  (chaint)->aat[i].id = chain->aa[i].id;
@@ -2213,7 +2213,7 @@ void mark_constrained_aa_from_file(Chain *chain, simulation_params *sim_params) 
   if(!(sim_params->protein_model).external_constrained_aalist_file && !(sim_params->protein_model).external_constrained_aalist_file2) return;
 
   if ((sim_params->protein_model).external_constrained_aalist_file) {
-    fprintf(stderr,"marking constrained amino acids from file %s\n",(sim_params->protein_model).external_constrained_aalist_file);
+    fprintf(stderr,"1marking constrained amino acids from file %s\n",(sim_params->protein_model).external_constrained_aalist_file);
 
     FILE *fptr = fopen((sim_params->protein_model).external_constrained_aalist_file, "r");
     if (!fptr) stop("problems while opening constraint file");
@@ -2232,7 +2232,7 @@ void mark_constrained_aa_from_file(Chain *chain, simulation_params *sim_params) 
     fclose(fptr);
   }
   if ((sim_params->protein_model).external_constrained_aalist_file2) {
-    fprintf(stderr,"marking constrained amino acids from file %s\n",(sim_params->protein_model).external_constrained_aalist_file2);
+    fprintf(stderr,"2marking constrained amino acids from file %s\n",(sim_params->protein_model).external_constrained_aalist_file2);
 
     FILE *fptr = fopen((sim_params->protein_model).external_constrained_aalist_file2, "r");
     if (!fptr) stop("problems while opening constraint file");

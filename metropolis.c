@@ -34,6 +34,29 @@
 /****           MOVES AND METROPOLIS CRITERIA           ****/
 /***********************************************************/
 
+/* Modulo a number to range(1..mod)
+reModNum(6,6)=6;
+reModNum(1,6)=1
+reModNum(7,6)=6;
+reModNum(0,6)=6
+*/
+static int reModNum(int a, int mod) {
+	return ((a-1)%mod)+1;
+}
+
+static int indMoved(int ind, int start, int end){
+	if (start>=end){
+		if (ind>end && ind<start)
+			return 0;
+		else
+			return 1;
+	} else {
+		if (ind>=start && ind<=end)
+			return 1;
+		else
+			return 0;
+	}
+}
 
 /* Check if the proposed move (saved in chaint) is allowed
    by applying the Metropolis criteria on the energy change.
@@ -41,70 +64,80 @@
    energy matrix. */
 static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, int end, double logLstar, double *currE, simulation_params *sim_params)
 {	
-
-    
-	
 	int i, j;
 	double q, loss = 0.0;
-	
-
+	int linked = 0;
 	//get the AD energy first as it will set position for gamma atoms
 	double externalloss = 0.0;
 	//double ADEnergy_Chaint[end-start+1];
 	double* ADEnergy_Chaint;
 	if (sim_params->protein_model.external_potential_type == 5){
+		
 		ADEnergy_Chaint = ADenergyNoClash(start,end,chain,chaint,&(sim_params->protein_model), 0);
-
 		for (i = start; i <= end; i++){
 			//ADEnergy_Chaint[i-start] = chaint->Ergt(0, i);
-			externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
-		}		
+			externalloss += chain->Erg(0, reModNum(i, chain->NAA-1)) - ADEnergy_Chaint[i-start];
+		}	
 	}
-
-
+	if (end>chain->NAA-1) linked=1;
 	for (i = start; i <= end; i++){
-
 		for (j = 1; j < chain->NAA; j++) {
-			if (j - i == chain->NAA - 2 && sim_params->protein_model.external_potential_type2 == 4){
-				q = energy2cyclic(biasmap, (chain->aa) + j, chaint->aat + i, &(sim_params->protein_model));
-			} else if(i - j == chain->NAA - 2 && sim_params->protein_model.external_potential_type2 == 4){
-				q = energy2cyclic(biasmap,chaint->aat + i, (chain->aa) + j, &(sim_params->protein_model));
-			} else if (j < start || end < j){
-				q = energy2(biasmap,chaint->aat + i, (chain->aa) + j, &(sim_params->protein_model));
-			} else if (j > i){
-
-				q = energy2(biasmap,chaint->aat + i, chaint->aat + j, &(sim_params->protein_model));
-			} else if (j == i){
-				q = energy1(chaint->aat + i, &(sim_params->protein_model));
-				if ( ( i==1 || i==chain->NAA-1)){
+			if (j == reModNum(i, chain->NAA-1)){
+				q = energy1(chaint->aat + j, &(sim_params->protein_model));
+				if ( ( j==1 || j==chain->NAA-1)){
 					if (sim_params->protein_model.external_potential_type2 != 4)
 						q += 0;
-					else if (i==1)
-						q += ramabias(chain->aa + chain->NAA - 1, chaint->aat + i, chaint->aat + i+1);
-					else if (i==chain->NAA-1)
-						q += ramabias(chaint->aat + i - 1, chaint->aat + i, chain->aa +1);
+					else if (j==1 && indMoved(2,start,reModNum(end,chain->NAA-1)) && linked)
+						q += ramabias(chaint->aat + chain->NAA - 1, chaint->aat + 1, chaint->aat + 2);
+					else if (j==1 && linked)
+						q += ramabias(chaint->aat + chain->NAA - 1, chaint->aat + 1, chain->aa + 2);	
+					else if (j==1)
+						q += ramabias(chain->aa + chain->NAA - 1, chaint->aat + 1, chaint->aat + 2);	
+					else if (j==chain->NAA-1 && indMoved(chain->NAA-1,start,reModNum(end,chain->NAA-1)) && linked)
+						q += ramabias(chaint->aat + j - 1, chaint->aat + j, chaint->aat +1);
+					else if (j==chain->NAA-1 && linked)
+						q += ramabias(chain->aa + j - 1, chaint->aat + j, chaint->aat +1);
+					else
+						q += ramabias(chaint->aat + j - 1, chaint->aat + j, chain->aa +1);
 				} else if (i == start)
-					q += ramabias(chain->aa + i-1, chaint->aat + i, chaint->aat + i+1);
+					q += ramabias(chain->aa + reModNum(i-1, chain->NAA-1), chaint->aat + reModNum(i, chain->NAA-1), chaint->aat + reModNum(i+1, chain->NAA-1));
 				else if (i == end)
-					q += ramabias(chaint->aat + i-1, chaint->aat + i, chain->aa + i+1);
+					q += ramabias(chaint->aat + reModNum(i-1, chain->NAA-1), chaint->aat + reModNum(i, chain->NAA-1), chain->aa + reModNum(i+1, chain->NAA-1));
 				else
-					q += ramabias(chaint->aat + i-1, chaint->aat + i, chaint->aat + i+1);
-
-			} else {	/* double jeopardy, (start <= j < i) */
-				chaint->Ergt(i, j) = chaint->Ergt(j, i);
-				continue;
+					q += ramabias(chaint->aat + reModNum(i-1, chain->NAA-1), chaint->aat + reModNum(i, chain->NAA-1), chaint->aat + reModNum(i+1, chain->NAA-1));
+			} 
+			else if (indMoved(j,start,reModNum(end,chain->NAA-1))){
+				if ((reModNum(i, chain->NAA-1) == 1 && j == chain->NAA-1)) {
+					q = energy2cyclic(biasmap,chaint->aat + 1, chaint->aat + chain->NAA - 1, &(sim_params->protein_model));
+					chaint->Ergt(j, reModNum(i, chain->NAA-1)) = q;
+				} else if(j > reModNum(i, chain->NAA-1)) {
+					//fprintf(stderr,"MC move q = %d %d, loss = %d %d haha %d %d,",i,j,start,end,indMoved(j,start,reModNum(end,chain->NAA-1)),linked);
+					q = energy2(biasmap,(chaint->aat) + reModNum(i, chain->NAA-1), (chaint->aat) + j, &(sim_params->protein_model));
+					if (j < start && linked) {
+						//fprintf(stderr,"aaa move q = %d %d, loss = %d %d haha %d %d,\n",i,j,start,end,indMoved(j,start,reModNum(end,chain->NAA-1)),linked);
+						chaint->Ergt(j + chain->NAA-1, reModNum(i, chain->NAA-1)) = q;
+					} else {
+						//fprintf(stderr,"MC move q = %d %d, loss = %d %d haha %d %d,\n",i,j,start,end,indMoved(j,start,reModNum(end,chain->NAA-1)),linked);
+						chaint->Ergt(j, reModNum(i, chain->NAA-1)) = q;
+					}
+						
+				} else {
+					//q = energy2(biasmap,(chaint->aat) + reModNum(i, chain->NAA-1), (chaint->aat) + j, &(sim_params->protein_model));
+					//chaint->Ergt(reModNum(i, chain->NAA-1), j) = chaint->Ergt(j, reModNum(i, chain->NAA-1));
+					continue;
+				}
+			} else {
+				if (j == 1 && i == chain->NAA-1)
+					q = energy2cyclic(biasmap,chain->aa + 1, chaint->aat + chain->NAA - 1, &(sim_params->protein_model));
+				else if (i == 1 && j == chain->NAA-1)
+					q = energy2cyclic(biasmap,chaint->aat + 1, chain->aa + chain->NAA - 1, &(sim_params->protein_model));
+				else
+					q = energy2(biasmap,chaint->aat + reModNum(i, chain->NAA-1), (chain->aa) + j, &(sim_params->protein_model));
 			}
 
 			chaint->Ergt(i, j) = q;
-			if (i == 1 && j == chain->NAA - 1 && sim_params->protein_model.external_potential_type2 == 4) {
-				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
-				loss += (chain->Erg(i, j) - q);
-			}
-			else {
-				//loss += (sim_params->protein_model.opt_totE_weight + sim_params->protein_model.opt_firstlastE_weight) * (chain->Erg(i, j) - q);
-				loss += (chain->Erg(i, j) - q);
-			}
-				
+			loss += (chain->Erg(reModNum(i, chain->NAA-1), j) - q);
+			//fprintf(stderr,"MC move i = %d, j = %d, %g\n",i,j,loss);
 		}
 	}
 	/*Also take into account the global_energy term */
@@ -123,7 +156,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
 	//if (chain->Erg(0, 0) > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
-	if (externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
+	//if (externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
 	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
@@ -132,13 +165,18 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 	double cyclicBondEnergy;
 	/*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
-	if (sim_params->protein_model.external_potential_type2 == 4 &&  (start <= 1 || end >= chain->NAA - 1)) {
-		cyclicBondEnergy = cyclic_energy((chaint->aat) + 1, (chaint->aat) + chain->NAA - 1, 0);
+	if (sim_params->protein_model.external_potential_type2 == 4) {
+		if (linked)
+			cyclicBondEnergy = cyclic_energy((chaint->aat) + 1, (chaint->aat) + chain->NAA - 1, 0);
+		else if (start == 1)
+			cyclicBondEnergy = cyclic_energy((chaint->aat) + 1, (chain->aa) + chain->NAA - 1, 0);
+		else if (end == chain->NAA-1) 
+			cyclicBondEnergy = cyclic_energy((chain->aa) + 1, (chaint->aat) + chain->NAA - 1, 0);
+		else
+			cyclicBondEnergy = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 		externalloss += chain->Erg(1, 0) - cyclicBondEnergy;
 	}
-	else if (sim_params->protein_model.external_potential_type2 == 4) {
-		cyclicBondEnergy = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
-	}
+
 
 
 	//loss = loss + externalloss;
@@ -147,8 +185,14 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	
 	
 
-	//if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * (loss)) * RAND_MAX < external_k * rand()) {
-	//	//fprintf(stderr," rejected\n");
+	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * (loss)) * RAND_MAX < rand()) {
+		//fprintf(stderr," rejected\n");
+		if (sim_params->protein_model.external_potential_type == 5)
+			free(ADEnergy_Chaint);
+		return 0;	/* disregard rejected changes */
+	}
+	//if (loss < 0.0 ) {
+	////	//fprintf(stderr," rejected\n");
 	//	return 0;	/* disregard rejected changes */
 	//}
 
@@ -160,22 +204,28 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//}
 
 	
-	if (loss < 0.0  && !sim_params->NS &&  loss * RAND_MAX * external_k < -rand()) {
-		//fprintf(stderr," rejected\n", );
-		return 0;	/* disregard rejected changes */
-	}
+	//if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
+	//	//fprintf(stderr," rejected\n", );
+	//	//free(ADEnergy_Chaint);
+	//	return 0;	/* disregard rejected changes */
+	//}
 
 	if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   externalloss * RAND_MAX * external_k < -rand()) {
+	//free(ADEnergy_Chaint);
+		if (sim_params->protein_model.external_potential_type == 5)
+			free(ADEnergy_Chaint);
 		return 0;
 	}
 
 
 
 	
-	if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
-		//fprintf(stderr," rejected\n");
-		return 0;	/* disregard rejected changes */
-	}
+	//if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
+	//	//fprintf(stderr," rejected\n");
+	//	//free(ADEnergy_Chaint);
+	//	return 0;	/* disregard rejected changes */
+	//	
+	//}
 
 
 	//fprintf(stderr," accepted\n");
@@ -183,18 +233,24 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 
 
-	if(sim_params->NS && ((-logLstar > *currE && -logLstar < *currE - loss) || (-logLstar < *currE && loss < 0  )  ))
-        return 0;
+	if(sim_params->NS && ((-logLstar > *currE && -logLstar < *currE - loss) || (-logLstar < *currE && loss < 0  )  )) {
+		//free(ADEnergy_Chaint);
+		if (sim_params->protein_model.external_potential_type == 5)
+			free(ADEnergy_Chaint);
+		return 0;
+		
+	}
 	
 
 	/* commit accepted changes */
 	for (i = start; i <= end; i++)
 		for (j = 1; j < chain->NAA; j++)
-	    	chain->Erg(i, j) = chain->Erg(j, i) = chaint->Ergt(i, j);
-
-	for (j = start; j <= end; j++)
-	    chain->Erg(0, j) = ADEnergy_Chaint[j-start];
-
+	    	chain->Erg(reModNum(i, chain->NAA-1), j) = chain->Erg(j, reModNum(i, chain->NAA-1)) = chaint->Ergt(i, j);
+    if (sim_params->protein_model.external_potential_type == 5) {
+		for (j = start; j <= end; j++)
+			chain->Erg(0, reModNum(j, chain->NAA-1)) = ADEnergy_Chaint[j-start];
+		free(ADEnergy_Chaint);
+    }
 	chain->Erg(0, 0) = 0.0;
 
 	for (j = 1; j < chain->NAA; j++) {
@@ -205,7 +261,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		chain->Erg(1, 0) = cyclicBondEnergy;
 	}
 	*currE -= internalloss + externalloss;
-	
+	//free(ADEnergy_Chaint);
     return 1;
 }
 /* Make a crankshaft move.  This is a local move that involves
@@ -213,6 +269,9 @@ the crankshaft rotation of up to 4 peptde bonds.  Propose a
 move, and apply the Metropolis criteria. */
 void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
+	if (sim_params->protein_model.external_potential_type != 5) {
+		return 0;
+	}
 	/*translational move*/
 	if (transPtsCount==0) return;
 	double transvec[3];
@@ -301,7 +360,7 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 	fprintf(stderr, "transmutate!!! %g %g %g\n", chain->aa[centerAAID].c[0], chain->aa[centerAAID].c[1], chain->aa[centerAAID].c[2]);
 	fprintf(stderr, "transmutate!!! %g %g %g\n", Xpts[transPtsID], Ypts[transPtsID], Zpts[transPtsID]);
 	//copybetween(chain, chaint);
-
+	free(ADEnergy_Chaint);
 }
 
 
@@ -311,6 +370,10 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	/*translational move*/
 	//
 	//double transvec[3][chain->NAA - 1];
+
+	if (sim_params->protein_model.external_potential_type != 5) {
+		return 0;
+	}
 	double transvec[3];
 	int i;
 	for (i = 1; i < chain->NAA; i++) {
@@ -392,6 +455,7 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 
 	//if (moved && allowed(chain, chaint, biasmap, 1, chain->NAA - 1, logLstar, currE, sim_params)) {
 	if (externalloss < 0.0 && externalloss * RAND_MAX * external_k < -rand()) {
+		free(ADEnergy_Chaint);
 		return 0;
 	}
 
@@ -415,6 +479,7 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 			chain->aa[i] = chaint->aat[i];
 		}
 		//copybetween(chain, chaint);
+		free(ADEnergy_Chaint);
 		return 1;
 	}
 }
@@ -422,6 +487,9 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 /* Make a translation move. */
 int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
+	if (sim_params->protein_model.external_potential_type != 5) {
+		return 0;
+	}
 	/*translational optimization*/
 	//
 	//double transvec[3][chain->NAA - 1];
@@ -477,10 +545,12 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 		if (currExtE < extE) {
 		//find better energy
 			extE = currExtE;
+			free(ADEnergy_Chaint);
 			ADEnergy_Chaint = currADEnergy;
 			noImprovStep = 0;
 			for (i = 0; i < 3; i++) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
 		} else {
+			free(currADEnergy);
 		//redo the change and make the step smaller
 			for (i = 0; i < 3; i++) {
 				for (int j = 1; j < chain->NAA; j++) {
@@ -523,7 +593,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	 	chain->Erg(0, 0) += chain->Erg(0, j);
 	}
 
-
+	free(ADEnergy_Chaint);
 
 	
 	for (int i = 1; i <= chain->NAA - 1; i++) {
@@ -931,6 +1001,151 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	return 1;
 }
 
+
+
+
+/* Make a crankshaft move.  This is a local move that involves
+   the crankshaft rotation of up to 4 peptde bonds.  Propose a
+   move, and apply the Metropolis criteria. */
+static int crankshaftcyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+{	
+	int start, end, len, toss;
+	double alpha;
+	vector a;
+	matrix t;
+	const double discrete = 2.0 / RAND_MAX;
+    
+	//if(sim_params->NS){ 
+	for (int j = 1; j < chain->NAA; j++){
+		chaint->aat[j].etc = chain->aa[j].etc;
+		chaint->aat[j].num = chain->aa[j].num;
+		chaint->aat[j].id = chain->aa[j].id;
+		chaint->aat[j].chainid = chain->aa[j].chainid;
+		chaint->aat[j].SCRot = chain->aa[j].SCRot;
+		for(int i = 0; i < 3; i++){
+			chaint->aat[j].h[i] = chain->aa[j].h[i];	
+			chaint->aat[j].n[i] =  chain->aa[j].n[i];		
+			chaint->aat[j].ca[i] = chain->aa[j].ca[i];		
+			chaint->aat[j].c[i] = chain->aa[j].c[i];		
+			chaint->aat[j].o[i] = chain->aa[j].o[i];
+			chaint->aat[j].cb[i] = chain->aa[j].cb[i];
+			chaint->aat[j].g[i] = chain->aa[j].g[i];
+			chaint->aat[j].g2[i] = chain->aa[j].g2[i];
+			chaint->xaat[j][i][0] = chain->xaa[j][i][0];
+			chaint->xaat[j][i][1] = chain->xaa[j][i][1];
+			chaint->xaat[j][i][2] = chain->xaa[j][i][2];
+		}
+		//chaint->aat[j] = chain->aa[j];
+	}
+	//}
+
+    
+   
+	/* setup sidechain dihedral angles */
+	/* They change with P = 1/4 (unless fixed) */
+	if ((sim_params->protein_model).use_gamma_atoms != NO_GAMMA) {
+	    if (!(sim_params->protein_model).fix_chi_angles && rand()/(double)RAND_MAX < 0.25) { /* change chi angles */
+		for (int i = 1; i < chain->NAA; i++){ 
+		    //fprintf(stderr,"chi angles of amino acid %d",i);
+		    //fprintf(stderr," %c",chain->aa[i].id);
+		    //fprintf(stderr," %g",chain->aa[i].chi1); //would fail for G,A
+		    //fprintf(stderr," %g\n",chain->aa[i].chi2); //would fail for all but V,I,T
+		    if(chain->aa[i].id != 'G' && chain->aa[i].id != 'A' && chain->aa[i].chi1 != DBL_MAX) {
+			chaint->aat[i].chi1 = sidechain_dihedral(chain->aa[i].id, sim_params->protein_model.sidechain_properties);//aa[i].chi1;
+		    }
+		    if((chain->aa[i].id == 'V' || chain->aa[i].id == 'I' || chain->aa[i].id == 'T') && chain->aa[i].chi2 != DBL_MAX) {
+			chaint->aat[i].chi2 = sidechain_dihedral2(chain->aa[i].id,chaint->aat[i].chi1, sim_params->protein_model.sidechain_properties);//aa[i].chi2;
+		    }
+		}
+	    } else {
+		for (int i = 1; i < chain->NAA; i++){
+			//TODO: we might need this here: if(chain->aa[i].id != 'G' && chain->aa[i].id != 'A') {
+			    chaint->aat[i].chi1 = chain->aa[i].chi1;
+			    chaint->aat[i].chi2 = chain->aa[i].chi2;
+			//}
+		} 
+	    }
+	}
+
+	toss = rand();
+	/* segment length */
+	len = toss & 0x3;	/* segment length minus one */
+	if (len > chain->NAA - 2)
+		len = chain->NAA - 2;
+
+	/* segment start */
+	start = reModNum(rand(), chain->NAA-1);
+	/* segment end */
+	end = (start + len + 1) ;
+		
+
+	//fprintf(stderr,"committing amino acid xaa %d - %d %d\n",start,end,len);
+
+	/* setup fixed ends for crankshaft or pivot */	
+	castvec(chaint->aat[start].ca, chain->aa[start].ca);
+	casttriplet(chaint->xaat[reModNum(start-1, chain->NAA-1)], chain->xaa[reModNum(start-1, chain->NAA-1)]);
+	castvec(chaint->aat[reModNum(end, chain->NAA-1)].ca, chain->aa[reModNum(end, chain->NAA-1)].ca);
+	casttriplet(chaint->xaat[reModNum(end, chain->NAA-1)], chain->xaa[reModNum(end, chain->NAA-1)]);
+	
+	/* magnitude of rotation */
+	/* rotate triplets, alpha in [-ampl; +ampl] */
+	//ampl = ampl/5;
+	alpha = ampl * (discrete * rand() - 1.0);
+
+	/* axis of rotation */
+	/* CA_start->CA_end vector for internal crankshaft */
+	subtract(a, chain->aa[reModNum(end, chain->NAA-1)].ca, chain->aa[start].ca);
+	normalize(a);
+
+
+	/* rotation matrix */
+	rotmatrix(t, a, alpha);
+
+
+	/* rotating the CA_i->CA_i+1 vectors */
+	for (int i = start; i < end; i++){
+		rotation(chaint->xaat[reModNum(i, chain->NAA-1)], t, chain->xaa[reModNum(i, chain->NAA-1)]);
+	}
+
+	/* build trial amino acid CAs using the CA-CA vectors */
+
+	for (int i = start; i < end-1; i++){ //moving residues start+1 to end-1
+		carbonate_f(chaint->aat + reModNum(i + 1, chain->NAA-1), chaint->aat + reModNum(i, chain->NAA-1), chaint->xaat[reModNum(i, chain->NAA-1)]);
+	}
+
+	//building the peptide bonds of the amino acids
+	//by now start and end have been adjusted if pivoting
+	for (int i = start; i <= end; i++) {
+		acidate(chaint->aat + reModNum(i, chain->NAA-1), chaint->xaat[reModNum(i - 1, chain->NAA-1)], chaint->xaat[reModNum(i, chain->NAA-1)], sim_params);
+	}
+	
+        /* testing if move is allowed */
+	if (!allowed(chain,chaint,biasmap,start, end, logLstar,currE, sim_params))
+		return 0;	/* disregard rejected changes */
+	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
+	
+	/* commit accepted changes */
+	
+	//fprintf(stderr,"committing amino acid xaa %d - %d\n",start-1,end);
+
+	casttriplet(chain->xaa[reModNum(start -1 , chain->NAA-1)], chaint->xaat[reModNum(start -1 , chain->NAA-1)]);
+	for (int i = start; i <= end; i++){
+		casttriplet(chain->xaa[reModNum(i , chain->NAA-1)], chaint->xaat[reModNum(i , chain->NAA-1)]);
+	}
+
+
+
+
+
+	//fprintf(stderr,"committing amino acid aa %d - %d\n",start,end);
+	for (int i = start; i <= end; i++) {
+		chain->aa[reModNum(i , chain->NAA-1)] = chaint->aat[reModNum(i , chain->NAA-1)];
+	}
+
+	return 1;
+}
+
+
 /* MC move wrapper.  Call crankshaft to make an MC move, and calculate the acceptance rate.
    Possibly adjust "negative" amplitudes towards the desired acceptance rate. */
 void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double *currE, int changeamp, simulation_params *sim_params)
@@ -947,8 +1162,11 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 	static int transaccept = 0, reject = 0;    
 	
 	if (changeamp == -1) { sim_params->accept_counter = 0; sim_params->reject_counter = 0; transaccept = 0; }
-	
-	if (crankshaft(chain,chaint,biasmap,sim_params->amplitude,logLstar,currE, sim_params)) {	/* accepted */	
+	if (sim_params->protein_model.external_potential_type2 == 4 && chain->Erg(1,0)<0.5) {
+		if (crankshaftcyclic(chain,chaint,biasmap,sim_params->amplitude,logLstar,currE, sim_params))
+			sim_params->accept_counter++; 
+	}
+	else if (crankshaft(chain,chaint,biasmap,sim_params->amplitude,logLstar,currE, sim_params)) {	/* accepted */	
 		sim_params->accept_counter++; 
 		//fprintf(stderr, "crankshaft!\n");
 		/*if (changeamp && amplitude < 0.0 && ++score > 16 && amplitude > -M_PI) {
@@ -956,7 +1174,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 			amplitude *= 1.1;
 		}*/
 	}
-	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 20 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 0 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 	//	//fprintf(stderr, "translation!\n");
