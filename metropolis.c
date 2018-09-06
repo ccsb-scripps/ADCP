@@ -107,7 +107,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 					q += ramabias(chaint->aat + reModNum(i-1, chain->NAA-1), chaint->aat + reModNum(i, chain->NAA-1), chaint->aat + reModNum(i+1, chain->NAA-1));
 			} 
 			else if (indMoved(j,start,reModNum(end,chain->NAA-1))){
-				if ((reModNum(i, chain->NAA-1) == 1 && j == chain->NAA-1)) {
+				if ((reModNum(i, chain->NAA-1) == 1 && j == chain->NAA-1 && sim_params->protein_model.external_potential_type2 == 4)) {
 					q = energy2cyclic(biasmap,chaint->aat + 1, chaint->aat + chain->NAA - 1, &(sim_params->protein_model));
 					chaint->Ergt(j, reModNum(i, chain->NAA-1)) = q;
 				} else if(j > reModNum(i, chain->NAA-1)) {
@@ -127,9 +127,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 					continue;
 				}
 			} else {
-				if (j == 1 && i == chain->NAA-1)
+				if (j == 1 && i == chain->NAA-1 && sim_params->protein_model.external_potential_type2 == 4)
 					q = energy2cyclic(biasmap,chain->aa + 1, chaint->aat + chain->NAA - 1, &(sim_params->protein_model));
-				else if (i == 1 && j == chain->NAA-1)
+				else if (i == 1 && j == chain->NAA-1 && sim_params->protein_model.external_potential_type2 == 4)
 					q = energy2cyclic(biasmap,chaint->aat + 1, chain->aa + chain->NAA - 1, &(sim_params->protein_model));
 				else
 					q = energy2(biasmap,chaint->aat + reModNum(i, chain->NAA-1), (chain->aa) + j, &(sim_params->protein_model));
@@ -589,13 +589,13 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 				}
 			}
 		}
-		currADEnergy = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 1);
+		currADEnergy = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
 		currExtE = 0.0;
 		for (i = 1; i <= chain->NAA-1; i++){
 			currExtE += currADEnergy[i-1];
 			//fprintf(stderr,"%g !!!", currADEnergy[i-1]);
 		}
-		//fprintf(stderr,"translation %g \n!!!", currExtE);
+		//fprintf(stderr,"transopt %g \n!!!", currExtE);
 		if (currExtE < extE) {
 		//find better energy
 			extE = currExtE;
@@ -604,7 +604,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 			noImprovStep = 0;
 			for (i = 0; i < 3; i++) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
 		} else {
-			free(currADEnergy);
+			
 		//redo the change and make the step smaller
 			for (i = 0; i < 3; i++) {
 				for (int j = 1; j < chain->NAA; j++) {
@@ -630,7 +630,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 			}
 			noImprovStep += 1;
 		}
-		//fprintf(stderr,"translation %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
+		fprintf(stderr,"transopt %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
 	}
 	if (extE - chain->Erg(0,0) > -0.00001) return 0;
 	//casttriplet(chain->xaa_prev[chain->aa[1].chainid], chaint->xaat_prev[chain->aa[1].chainid]);
@@ -648,7 +648,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	}
 
 	free(ADEnergy_Chaint);
-
+	free(currADEnergy);
 	
 	for (int i = 1; i <= chain->NAA - 1; i++) {
 		chain->aa[i] = chaint->aat[i];

@@ -1912,7 +1912,7 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 	//if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
 	/* C-O-M or n, ca, c */
 	//gridmap_initialise();
-	double coordsSet[21 * chain->NAA];
+	double coordsSet[30 * chain->NAA];
 	//double *currgridmapvalues = malloc(NX*NY*NZ * sizeof(double));
 
 	//double *coordsSet = malloc(21 * chain->NAA * sizeof(double));
@@ -1927,7 +1927,7 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 
 	AA* a;
 	int i = 0; int j = 0; int m = 0;
-	for (i = 0; i <= 21 * chain->NAA -1; i++){
+	for (i = 0; i <= 30 * chain->NAA -1; i++){
 		coordsSet[i] = 999.;
 	}
 
@@ -1938,6 +1938,11 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 	for (i = 1; i <= chain->NAA-1; i++){
 		if (chaint!=NULL && indMoved(i, start, (end-1)%(chain->NAA-1)+1 )) {
 			a = chaint->aat + i;
+		}
+		else {
+			a = chain->aa + i;
+		}
+		if (!indMoved(i, start, (end-1)%(chain->NAA-1)+1 )) {
 			if (a->id != 'G'){
 				coordsSet[ind]=a->cb[0]; ind++;
 				coordsSet[ind]=a->cb[1]; ind++;
@@ -1954,9 +1959,6 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 				coordsSet[ind]=a->g2[2]; ind++;
 			}
 		}
-		else {
-			a = chain->aa + i;
-		}
 		coordsSet[ind]=a->ca[0]; ind++;
 		coordsSet[ind]=a->ca[1]; ind++;
 		coordsSet[ind]=a->ca[2]; ind++;
@@ -1970,7 +1972,7 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 		coordsSet[ind]=a->o[1]; ind++;
 		coordsSet[ind]=a->o[2]; ind++;
 	}
-	//fprintf(stderr, "count %d \n", ind);
+	//fprintf(stderr, "count %d %d %d\n", ind,start,end);
 	int notmovedind = ind;
 	double sideChainEnergy = 0.0;
 	double erg = 0.0;
@@ -2053,7 +2055,10 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 				fprintf(stderr, "energies C %g CA %g N %g O %g Cb %g H %g", exC, exCa, exN, exO, exCb, exH);
 				stop("Grid energy exceeds limits, something wrong!");
 			}
-
+			if (mod == 1){
+				fprintf(stderr, "Energy  i %d j %d type %c %g start %d end %d mod %d ind %d\n", i, j, a->id, erg,start,end,mod,ind);
+			}
+				
 			/*Here is a hack, external_r0[0] term 1.x indicate to reconstruct full-atom sidechain score grid energy */
 			if ((int) mod_params->external_r0[0] == 1) {
 				switch (a->id)
@@ -2132,7 +2137,7 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 				energiesforward[i-start] = erg;
 			else
 				energiesbackward[i-start] = erg;
-			//fprintf(stderr, "Energy  i %d j %d %g\n", i, j, erg);
+			
 			if (a->id != 'G'){
 				coordsSet[ind]=a->cb[0]; ind++;
 				coordsSet[ind]=a->cb[1]; ind++;
@@ -2171,7 +2176,7 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 		free(energiesforward);
 	}
 		
-	
+	//free(coordsSet);
 	//ADenergies = energiesforward;
 	//for(int m=start; m<=end; m++){
 	//	fprintf(stderr, "bb Energy %g %d %d\n", energiesforward[m-start],start,end);

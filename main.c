@@ -357,7 +357,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//copybetween(chain, swapChains[swapInd]);
 					
 					if (currTargetEnergy < 1000){
-						transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+						//transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 						currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 											+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
 											+ sim_params->protein_model.opt_firstlastE_weight*firstlastenergy(chain);
@@ -448,7 +448,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//fclose(swapname);
 
 						if (currTargetEnergy < 1000){
-							transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+							//transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 							currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 											+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
 											+ sim_params->protein_model.opt_firstlastE_weight*firstlastenergy(chain);
