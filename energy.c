@@ -620,7 +620,7 @@ double ramabias(AA *prevaa, AA *a, AA *lateraa)
 	}
 	
 	//fprintf(stderr,"aaa num %d id %c ind %d energy %g segphi %d segpsi %d phi %g psi %g \n",a->num, a->id, ind, -energy, segphi, segpsi, anglephi, anglepsi);
-	//energy = energy < -3.91 ? energy + 3.91 : 0.0;
+	energy = energy < -3.91 ? energy + 3.91 : 0.0;
 	return -energy;	/* RMSD by Ho et al. (2004) */
 }
 

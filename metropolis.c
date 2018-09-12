@@ -163,7 +163,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//loss += q - chain->Erg(0, 0);
 	//loss = loss/sqrt(chain->NAA) + externalloss;
 
-	double cyclicBondEnergy;
+	double cyclicBondEnergy = 0.0;
 	/*special cyclic*/  // needs attention !!! sign might be wrong...!!!GARY HACK
 	if (sim_params->protein_model.external_potential_type2 == 4) {
 		if (linked)
@@ -599,7 +599,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 		if (currExtE < extE) {
 		//find better energy
 			extE = currExtE;
-			free(ADEnergy_Chaint);
+			//free(ADEnergy_Chaint);
 			ADEnergy_Chaint = currADEnergy;
 			noImprovStep = 0;
 			for (i = 0; i < 3; i++) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
