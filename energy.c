@@ -585,7 +585,7 @@ double stress(AA *a, model_params *mod_params)
 	return erg;
 }
 
-double ramabias(AA *prevaa, AA *a, AA *lateraa)
+double ramabias(AA *prevaa, AA *a, AA *nextaa)
 {
 	double phi = 0.0, psi = 0.0;
 	double energy = 0.0;
@@ -593,7 +593,7 @@ double ramabias(AA *prevaa, AA *a, AA *lateraa)
 	int segpsi = 0;
 	
 	phi = dihedral_rama(prevaa->c, a->n, a->ca, a->c, 1.46);
-	psi = dihedral_rama(a->n, a->ca, a->c, lateraa->n, 1.53);
+	psi = dihedral_rama(a->n, a->ca, a->c, nextaa->n, 1.53);
 
 	//double anglephi = phi * M_180_PI;
 	//double anglepsi = psi * M_180_PI;
@@ -620,8 +620,8 @@ double ramabias(AA *prevaa, AA *a, AA *lateraa)
 	}
 	
 	//fprintf(stderr,"aaa num %d id %c ind %d energy %g segphi %d segpsi %d phi %g psi %g \n",a->num, a->id, ind, -energy, segphi, segpsi, anglephi, anglepsi);
-	energy = energy < -3.91 ? energy + 3.91 : 0.0;
-	return -energy;	/* RMSD by Ho et al. (2004) */
+	//energy = energy < -3.91 ? energy + 3.91 : 0.0;
+	return -energy;	// RT * 0.59219 = kcal/mol
 }
 
 
@@ -1984,8 +1984,8 @@ double* ADenergyNoClash(int start, int end, Chain *chain, Chaint *chaint, model_
 	//double energiesforward[end-start+1];
 	//double energiesbackward[end-start+1];
 	for(int m=start; m<=end; m++){
-		energiesforward[m-start] = 999.0;
-		energiesbackward[m-start] = 999.0;
+		energiesforward[m-start] = 99999.0;
+		energiesbackward[m-start] = 99999.0;
 		//fprintf(stderr, "bb Energy %g %g\n", energiesforward[m-start],energiesbackward[m-start]);
 	}
 	int direction = 1;

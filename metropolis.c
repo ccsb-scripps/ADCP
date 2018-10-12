@@ -156,7 +156,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double external_k = 1.0;
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
 	//if (chain->Erg(0, 0) > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
-	if (externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
+	
+	//if (chain->Erg(0, 0) > 1000 && rand()%100<20) external_k = 0.01 * external_k;
+	if (chain->Erg(0, 0) < 1000 && externalloss < -10 || loss < -10 ) external_k = 0.05 * external_k;
 	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
@@ -630,7 +632,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 			}
 			noImprovStep += 1;
 		}
-		fprintf(stderr,"transopt %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
+		//fprintf(stderr,"transopt %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
 	}
 	if (extE - chain->Erg(0,0) > -0.00001) return 0;
 	//casttriplet(chain->xaa_prev[chain->aa[1].chainid], chaint->xaat_prev[chain->aa[1].chainid]);
@@ -648,7 +650,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	}
 
 	free(ADEnergy_Chaint);
-	free(currADEnergy);
+	//free(currADEnergy);
 	
 	for (int i = 1; i <= chain->NAA - 1; i++) {
 		chain->aa[i] = chaint->aat[i];
@@ -887,6 +889,9 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	}
 	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
 	//fprintf(stderr, "s2 %d e %d\n", start, end);
+
+	if (chain->Erg(0,0)>1000)
+		ampl = 2 * ampl;
 
 	/* pivot or crankshaft */
 	if (start == 0) {
@@ -1202,7 +1207,7 @@ static int crankshaftcyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, dou
 
 /* MC move wrapper.  Call crankshaft to make an MC move, and calculate the acceptance rate.
    Possibly adjust "negative" amplitudes towards the desired acceptance rate. */
-void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double *currE, int changeamp, simulation_params *sim_params)
+int move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double *currE, int changeamp, simulation_params *sim_params)
 {  /*Changed so amplitude does not depend on history of chain 
 
 	changeamp = 0 for normal use
@@ -1214,23 +1219,28 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 */
 	//static int score = 0
 	static int transaccept = 0, reject = 0;    
-	
+	int moved = 0;
 	if (changeamp == -1) { sim_params->accept_counter = 0; sim_params->reject_counter = 0; transaccept = 0; }
 	if (sim_params->protein_model.external_potential_type2 == 4 && chain->Erg(1,0)<0.5) {
-		if (crankshaftcyclic(chain,chaint,biasmap,sim_params->amplitude,logLstar,currE, sim_params))
+		if (crankshaftcyclic(chain,chaint,biasmap,sim_params->amplitude,logLstar,currE, sim_params)){
 			sim_params->accept_counter++; 
+			moved = 1;
+                }
+                         
 	}
 	else if (crankshaft(chain,chaint,biasmap,sim_params->amplitude,logLstar,currE, sim_params)) {	/* accepted */	
-		sim_params->accept_counter++; 
+		sim_params->accept_counter++;
+ 		moved = 1;
 		//fprintf(stderr, "crankshaft!\n");
 		/*if (changeamp && amplitude < 0.0 && ++score > 16 && amplitude > -M_PI) {
 			score = 0;
 			amplitude *= 1.1;
 		}*/
 	}
-	if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 10 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 10 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
+		moved = 1;
 	//	//fprintf(stderr, "translation!\n");
 	//	/*if (changeamp && amplitude < 0.0 && ++score > 16 && amplitude > -M_PI) {
 	//	score = 0;
@@ -1261,7 +1271,7 @@ void move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double
 		sim_params->reject_counter = 0;
 		transaccept = 0;
 	}
-	
+	return moved;	
 }
 
 void finalize(Chain *chain, Chaint *chaint, Biasmap *biasmap){
