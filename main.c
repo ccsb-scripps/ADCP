@@ -319,6 +319,14 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					sim_params->protein_model.external_k[0] = external_k;
 				}
 
+				if (1) {
+					transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+					currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
+										+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
+										+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
+					targetBest = currTargetEnergy;
+				}
+
 				//record energy and reset indices;
 				
 				resetIndex = currIndex;
@@ -358,13 +366,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//fclose(swapname);
 					//copybetween(chain, swapChains[swapInd]);
 					
-					if (currTargetEnergy < 100000){
-						transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
-						currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
-											+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
-											+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
-						targetBest = currTargetEnergy;
-					}
+
 					fprintf(stderr, "swap in best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 					copybetween(swapChains[swapInd], chain);
 					swapEnergy[swapInd] = currTargetEnergy;
@@ -452,7 +454,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 						//fclose(swapname);
 
-						if (currTargetEnergy < 1000){
+						if (1){
 							transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 							currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 											+ sim_params->protein_model.opt_extE_weight*extenergy(chain)

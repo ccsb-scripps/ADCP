@@ -206,12 +206,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//}
 
 	
-	if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
+	//if (loss < 0.0  && !sim_params->NS &&  exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
 		//fprintf(stderr," rejected\n", );
 		//if (sim_params->protein_model.external_potential_type == 5)
 			//free(ADEnergy_Chaint);
-		return 0;	/* disregard rejected changes */
-	}
+	//	return 0;	/* disregard rejected changes */
+	//}
 
 	if (sim_params->protein_model.external_potential_type == 5 && externalloss < 0.0 && !sim_params->NS &&   externalloss * RAND_MAX * external_k < -rand()) {
 	//free(ADEnergy_Chaint);
@@ -223,12 +223,12 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 
 
 	
-	//if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
+	if (sim_params->protein_model.external_potential_type == 5 && !sim_params->NS && externalloss < 0.0 &&   exp(sim_params->thermobeta * externalloss *external_k) * RAND_MAX < rand()) {
 	//	//fprintf(stderr," rejected\n");
 	//	//free(ADEnergy_Chaint);
-	//	return 0;	/* disregard rejected changes */
+		return 0;	/* disregard rejected changes */
 	//	
-	//}
+	}
 
 
 	//fprintf(stderr," accepted\n");
@@ -588,6 +588,18 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	//}
 	//casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
 	
+	//for (int i = 1; i <= chain->NAA -1; i++) {
+	//	fprintf(stderr, " %d", (chain->aa + i)->SCRot);
+	//}
+	//
+	//
+	//for (int i = 1; i <= chain->NAA -1; i++) {
+	//	fprintf(stderr, " %g", chain->Erg(0,i));
+	//}
+	//
+	//
+	//fprintf(stderr," curr rot transopt !!!\n");
+
 	double movement[3];
 	int noImprovStep = 0;
 	double currExtE = 0.0;
@@ -599,7 +611,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 		if (noImprovStep == 5) break;
 		for (i = 0; i < 3; i++) {
 			if (step == 0) movement[i] = 0.0;
-			if (step == 1) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
+			if (step == 1) movement[i] = 0.2 * rand()/RAND_MAX - 0.1;
 			for (int j = 1; j < chain->NAA; j++) {
 				if (chaint->aat[j].etc & G__){
 					chaint->aat[j].g[i] += movement[i];
@@ -619,7 +631,10 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 				}
 			}
 		}
-		ADenergyNoClash(currADEnergy, 1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
+		if (step < 150) 
+			ADenergyNoClash(currADEnergy, 1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 1);
+		else
+			ADenergyNoClash(currADEnergy, 1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
 		currExtE = 0.0;
 		for (i = 1; i <= chain->NAA-1; i++){
 			currExtE += currADEnergy[i-1];
@@ -634,7 +649,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 				ADEnergy_Chaint[i-1] = currADEnergy[i-1];
 			}
 			noImprovStep = 0;
-			for (i = 0; i < 3; i++) movement[i] = 0.4 * rand()/RAND_MAX - 0.2;
+			for (i = 0; i < 3; i++) movement[i] = 0.2 * rand()/RAND_MAX - 0.1;
 		} else {
 			
 		//redo the change and make the step smaller
@@ -662,7 +677,13 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 			}
 			noImprovStep += 1;
 		}
-		//fprintf(stderr,"transopt %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
+
+		//for (int i = 1; i <= chain->NAA -1; i++) {
+		//	fprintf(stderr, " %d", (chaint->aat + i)->SCRot);
+		//}
+		//fprintf(stderr," transopt %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
+
+
 	}
 	if (extE - chain->Erg(0,0) > -0.00001) return 0;
 	//casttriplet(chain->xaa_prev[chain->aa[1].chainid], chaint->xaat_prev[chain->aa[1].chainid]);
@@ -671,7 +692,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	//	casttriplet(chain->xaa[i], chaint->xaat[i]);
 	//}
 
-
+	fprintf(stderr," transopt %g %g %g %g %g %d!!!\n", chain->Erg(0, 0), extE ,movement[0] ,movement[1], movement[2], noImprovStep);
 	chain->Erg(0, 0) = 0.0;
 
 	for (int j = 1; j < chain->NAA; j++) {
