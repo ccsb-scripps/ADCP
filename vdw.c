@@ -185,18 +185,19 @@ double clash(AA *a, model_params *mod_params)
 
 double HHvDW(AA *a, AA *b) 
 {
+	//return 0.0;
 	double HHradii = 2.6;
 	double HHstrength = 0.1;
 	if (a->id == 'P' || b->id == 'P') return 0.;
 	double distHH = distance(a->h, b->h);
 	if (distHH >= 9) return 0.;
 	double p6 = (HHradii*HHradii/distHH) * (HHradii*HHradii/distHH) *(HHradii*HHradii/distHH);
-        double erg=0.;
+    double erg=0.;
 	if (a->id != 'P' && b->id != 'P' && distHH<9) {
 		erg = 1/sqrt(distHH) + HHstrength * (p6*p6-2*p6) - 0.2665;
 		//fprintf(stderr, "close exN HH %g\n", erg);
 	}
-        return erg;	
+    return erg;	
 }
 
 #ifdef LJ_NEIGHBOUR_HARD
