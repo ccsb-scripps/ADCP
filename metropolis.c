@@ -148,6 +148,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//fprintf(stderr,"MC move q = %g, loss = %g,",q,loss);
 	//double externalloss = (chain->Erg(0, 0) - q);
 
+	currTargetEnergy = sim_params->protein_model.opt_totE_weight*(totenergy(chain)-loss)
+				+ (sim_params->protein_model.opt_extE_weight+sim_params->protein_model.opt_totE_weight)*(extenergy(chain)-externalloss);
 
 
 
@@ -158,7 +160,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//if (chain->Erg(0, 0) > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
 	
 	//if (chain->Erg(0, 0) > 1000 && rand()%100<20) external_k = 0.01 * external_k;
-	if (chain->Erg(0, 0) < 1000 && externalloss < -10 || loss < -10 ) external_k = 0.05 * external_k;
+	//if ((currTargetEnergy - targetBest < 5.) && (externalloss < -10 || loss < -10 )) external_k = 0.05 * external_k;
+	if (externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
 	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//loss is negative!! if loss is negative, it's worse, bad
 	/* Metropolis criteria */
@@ -276,7 +279,7 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 		return 0;
 	}
 	/*translational move*/
-	if (transPtsCount==0) return;
+	if (transPtsCount == 1) return;
 	double transvec[3];
 	for (int j = 1; j < chain->NAA; j++){
 		chaint->aat[j].etc = chain->aa[j].etc;
@@ -463,7 +466,7 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		movement[i] = 0.0;
 		if (chain->Erg(0, 0) > 0) {
 			if (length > 0.2) {
-				movement[i] = 0.4 * rand() / RAND_MAX - 0.2;
+				movement[i] = 1. * rand() / RAND_MAX - 0.5;
 			}
 			else {
 				movement[i] = transvec[i] * length / abs(vecind2 - vecind1);
@@ -471,7 +474,7 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 		}
 		else {
 			if (length > 0.2) {
-				movement[i] = 0.4 * rand() / RAND_MAX - 0.2;
+				movement[i] = 1. * rand() / RAND_MAX - 0.5;
 			}
 			else {
 				movement[i] = transvec[i] * length / abs(vecind2 - vecind1);
@@ -613,9 +616,9 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	double currADEnergy[chain->NAA-1], ADEnergy_Chaint[chain->NAA-1];
 	double extE = chain->Erg(0,0);
 	int step = 0;
-	for (step = 0; step < 50; step++) {		
+	for (step = 0; step < 30; step++) {		
 		
-		if (noImprovStep == 8) break;
+		if (noImprovStep == 5) break;
 		for (i = 0; i < 3; i++) {
 			if (step == 0) movement[i] = 0.0;
 			if (step == 1) movement[i] = 0.2 * rand()/RAND_MAX - 0.1;
@@ -699,7 +702,7 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	//	casttriplet(chain->xaa[i], chaint->xaat[i]);
 	//}
 
-	fprintf(stderr," transopt %g %g %g %g %g %d!!!\n", chain->Erg(0, 0), extE ,movement[0] ,movement[1], movement[2], noImprovStep);
+	//fprintf(stderr," transopt %g %g %g %g %g %d!!!\n", chain->Erg(0, 0), extE ,chaint->aat[1].c[0] - chain->aa[1].c[0], chaint->aat[1].c[1] - chain->aa[1].c[1], chaint->aat[1].c[2] - chain->aa[1].c[2], step);
 	chain->Erg(0, 0) = 0.0;
 
 	for (int j = 1; j < chain->NAA; j++) {
