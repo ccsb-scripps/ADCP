@@ -410,6 +410,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				if (swapTransMutate == 1 && rand()%10000 > swapBadProb){
 					fprintf(stderr, "heat and transmutate curr %g best %g curriter %d \n", currTargetEnergy, targetBest, i);
 					transmutate(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+					flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 					mutateIndex = currIndex;
 				}
 

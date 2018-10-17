@@ -299,6 +299,8 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 		}
 		//chaint->aat[j] = chain->aa[j];
 	}
+	
+
 	casttriplet(chaint->xaat[0], chain->xaa[0]);
 	for (int i = 1; i <= chain->NAA - 1; i++) {
 		casttriplet(chaint->xaat[i], chain->xaa[i]);
@@ -582,6 +584,11 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 		}
 		//chaint->aat[j] = chain->aa[j];
 	}
+	for(i = 0; i < 3; i++){
+		chaint->xaat_prev[0][i][0] = chain->xaa_prev[0][i][0];
+		chaint->xaat_prev[0][i][1] = chain->xaa_prev[0][i][1];
+		chaint->xaat_prev[0][i][2] = chain->xaa_prev[0][i][2];
+	}
 	//casttriplet(chaint->xaat[0], chain->xaa[0]);
 	//for (i = 1; i <= chain->NAA - 1; i++) {
 	//	casttriplet(chaint->xaat[i], chain->xaa[i]);
@@ -606,9 +613,9 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	double currADEnergy[chain->NAA-1], ADEnergy_Chaint[chain->NAA-1];
 	double extE = chain->Erg(0,0);
 	int step = 0;
-	for (step = 0; step < 30; step++) {		
+	for (step = 0; step < 50; step++) {		
 		
-		if (noImprovStep == 5) break;
+		if (noImprovStep == 8) break;
 		for (i = 0; i < 3; i++) {
 			if (step == 0) movement[i] = 0.0;
 			if (step == 1) movement[i] = 0.2 * rand()/RAND_MAX - 0.1;
@@ -1112,6 +1119,124 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 }
 
 
+
+void flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+{	
+	int start, end, len, toss;
+	double alpha;
+	vector a;
+	matrix t;
+	const double discrete = 2.0 / RAND_MAX;
+    
+	//if(sim_params->NS){ 
+	for (int i = 1; i < chain->NAA; i++){
+		chaint->aat[i].etc = chain->aa[i].etc;
+		chaint->aat[i].num = chain->aa[i].num;
+		chaint->aat[i].id = chain->aa[i].id;
+		chaint->aat[i].chainid = chain->aa[i].chainid;
+		chaint->aat[i].SCRot = chain->aa[i].SCRot;
+	}
+	//}
+    
+
+//TODO multi-chain protein
+	int pivot_around_end = 0;
+	int pivot_around_start = 0;
+
+	toss = rand();
+
+	start = 1;
+	end = chain->NAA - 1;
+
+	
+	for (int j = start; j < end; j++){
+		for (int i = 0; i < 3; i++){
+			chaint->xaat[j][i][0] = -chain->xaa[end - j + start - 1][i][0];
+			chaint->xaat[j][i][1] = -chain->xaa[end - j + start - 1][i][1];
+			chaint->xaat[j][i][2] = -chain->xaa[end - j + start - 1][i][2];
+		}		
+	}
+
+	for(int i = 0; i < 3; i++){
+		chaint->xaat_prev[0][i][0] = -chain->xaa[end][i][0];
+		chaint->xaat_prev[0][i][1] = -chain->xaa[end][i][1];
+		chaint->xaat_prev[0][i][2] = -chain->xaa[end][i][2];
+		chaint->xaat[end][i][0] = -chain->xaa_prev[0][i][0];
+		chaint->xaat[end][i][1] = -chain->xaa_prev[0][i][1];
+		chaint->xaat[end][i][2] = -chain->xaa_prev[0][i][2];
+		(chaint->aat + start)->ca[i] = (chain->aa + end)->ca[i];
+	}
+
+	for (int i = start; i < end; i++){ //moving residues start+1 to end-1
+		carbonate_f(chaint->aat + i + 1, chaint->aat + i, chaint->xaat[i]);
+	}
+
+
+
+
+
+
+
+	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
+
+	//building the peptide bonds of the amino acids
+	//by now start and end have been adjusted if pivoting
+	for (int i = start; i <= end; i++){
+		//if starting at the beginning of the chain with pivot or crankshaft
+		//fprintf(stderr,"metropolis pivot %d", pivot_around_end);
+		//fprintf(stderr," start %d", start);
+		//fprintf(stderr," current %d", i);
+		//if (pivot_around_end == 1 && i == start){
+		//	fprintf(stderr,"\n");
+		//} else {
+		//	fprintf(stderr," chain(current) %d", chain->aa[i].chainid);
+		//	fprintf(stderr," chain(prev) %d\n", chain->aa[i-1].chainid);
+		//}
+		if (i == start)  {
+			//use this chain's xaa_prev for the the direction of the N-terminal NH
+			//fprintf(stderr,"acidate %d with xaat_prev1 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat_prev[chain->aa[i].chainid][0][0],chaint->xaat_prev[chain->aa[i].chainid][0][1],chaint->xaat_prev[chain->aa[i].chainid][0][2],chaint->xaat_prev[chain->aa[i].chainid][1][0],chaint->xaat_prev[chain->aa[i].chainid][1][1],chaint->xaat_prev[chain->aa[i].chainid][1][2],chaint->xaat_prev[chain->aa[i].chainid][2][0],chaint->xaat_prev[chain->aa[i].chainid][2][1],chaint->xaat_prev[chain->aa[i].chainid][2][2]);
+			//fprintf(stderr,"acidate %d with xaat2 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat[i][0][0],chaint->xaat[i][0][1],chaint->xaat[i][0][2],chaint->xaat[i][1][0],chaint->xaat[i][1][1],chaint->xaat[i][1][2],chaint->xaat[i][2][0],chaint->xaat[i][2][1],chaint->xaat[i][2][2]);
+			acidate(chaint->aat + i, chaint->xaat_prev[chain->aa[i].chainid], chaint->xaat[i], sim_params);
+		} else {
+			//fprintf(stderr,"acidate %d with xaat1 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat[i-1][0][0],chaint->xaat[i-1][0][1],chaint->xaat[i-1][0][2],chaint->xaat[i-1][1][0],chaint->xaat[i-1][1][1],chaint->xaat[i-1][1][2],chaint->xaat[i-1][2][0],chaint->xaat[i-1][2][1],chaint->xaat[i-1][2][2]);
+			//fprintf(stderr,"acidate %d with xaat2 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat[i][0][0],chaint->xaat[i][0][1],chaint->xaat[i][0][2],chaint->xaat[i][1][0],chaint->xaat[i][1][1],chaint->xaat[i][1][2],chaint->xaat[i][2][0],chaint->xaat[i][2][1],chaint->xaat[i][2][2]);
+			acidate(chaint->aat + i, chaint->xaat[i - 1], chaint->xaat[i], sim_params);
+		}
+	}
+
+
+	fprintf(stderr, "before flip %g \n", chain->Erg(0,0));
+	double eK = sim_params->protein_model.external_k[0];
+	sim_params->protein_model.external_k[0] = 0.0000001;
+        /* testing if move is allowed */
+	if (!allowed(chain,chaint,biasmap,start, end, logLstar,currE, sim_params))
+		return 0;	/* disregard rejected changes */
+	fprintf(stderr, "after flip %g \n", chain->Erg(0,0));
+	sim_params->protein_model.external_k[0] = eK;
+	/* commit accepted changes */
+	
+	//fprintf(stderr,"committing amino acid xaa %d - %d\n",start-1,end);
+	if ((pivot_around_end == 1) || (chain->aa[start].chainid != chain->aa[start-1].chainid))  { //update this chain's xaa_prev
+		casttriplet(chain->xaa_prev[chain->aa[end].chainid], chaint->xaat_prev[chain->aa[end].chainid]);
+		//fprintf(stderr,"saving chain-%d xaat_prev1 %g %g %g %g %g %g %g %g %g\n",chain->aa[end].chainid,chaint->xaat_prev[chain->aa[i].chainid][0][0],chaint->xaat_prev[chain->aa[i].chainid][0][1],chaint->xaat_prev[chain->aa[i].chainid][0][2],chaint->xaat_prev[chain->aa[i].chainid][1][0],chaint->xaat_prev[chain->aa[i].chainid][1][1],chaint->xaat_prev[chain->aa[i].chainid][1][2],chaint->xaat_prev[chain->aa[i].chainid][2][0],chaint->xaat_prev[chain->aa[i].chainid][2][1],chaint->xaat_prev[chain->aa[i].chainid][2][2]);
+	} else {
+		casttriplet(chain->xaa[start-1], chaint->xaat[start-1]);
+	}
+	for (int i = start; i <= end; i++){
+		casttriplet(chain->xaa[i], chaint->xaat[i]);
+	}
+
+	
+
+
+
+	//fprintf(stderr,"committing amino acid aa %d - %d\n",start,end);
+	for (int i = start; i <= end; i++) {
+		chain->aa[i] = chaint->aat[i];
+	}
+	tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+	return 1;
+}
 
 
 /* Make a crankshaft move.  This is a local move that involves
