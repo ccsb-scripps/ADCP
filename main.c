@@ -410,7 +410,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				if (swapTransMutate == 1 && rand()%10000 > swapBadProb){
 					fprintf(stderr, "heat and transmutate curr %g best %g curriter %d \n", currTargetEnergy, targetBest, i);
 					transmutate(chain, chaint, biasmap, 0, 0, &temp, sim_params);
-					flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+					
 					mutateIndex = currIndex;
 				}
 
@@ -491,6 +491,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//swapInd = swapLength;
 						fprintf(stderr, "swap out good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 						copybetween(chain, swapChains[swapInd]);
+						flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 						lastIndex = currIndex;
 						//sim_params->protein_model.external_k[0] = external_k;
 					}
@@ -506,6 +507,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//swapInd = swapLength;
 						fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
 						copybetween(chain, swapChains[swapInd]);
+						flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 						lastIndex = currIndex;
 						//sim_params->protein_model.external_k[0] = external_k;
 					}
@@ -518,6 +520,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					fprintf(stderr, "transmutate bad curr %g best %g curriter %d \n", currTargetEnergy, targetBest, i);
 					copybetween(chain, swapChains[swapInd]);
 					transmutate(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+					//flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+
 					lastIndex = currIndex;
 					mutateIndex = currIndex;
 				}

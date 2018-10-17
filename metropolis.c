@@ -1120,7 +1120,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 
 
 
-void flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+int flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {	
 	int start, end, len, toss;
 	double alpha;
@@ -1205,23 +1205,20 @@ void flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, dou
 	}
 
 
-	fprintf(stderr, "before flip %g \n", chain->Erg(0,0));
+	//fprintf(stderr, "before flip %g \n", chain->Erg(0,0));
 	double eK = sim_params->protein_model.external_k[0];
 	sim_params->protein_model.external_k[0] = 0.0000001;
         /* testing if move is allowed */
 	if (!allowed(chain,chaint,biasmap,start, end, logLstar,currE, sim_params))
 		return 0;	/* disregard rejected changes */
-	fprintf(stderr, "after flip %g \n", chain->Erg(0,0));
+	//fprintf(stderr, "after flip %g \n", chain->Erg(0,0));
 	sim_params->protein_model.external_k[0] = eK;
 	/* commit accepted changes */
 	
 	//fprintf(stderr,"committing amino acid xaa %d - %d\n",start-1,end);
-	if ((pivot_around_end == 1) || (chain->aa[start].chainid != chain->aa[start-1].chainid))  { //update this chain's xaa_prev
-		casttriplet(chain->xaa_prev[chain->aa[end].chainid], chaint->xaat_prev[chain->aa[end].chainid]);
-		//fprintf(stderr,"saving chain-%d xaat_prev1 %g %g %g %g %g %g %g %g %g\n",chain->aa[end].chainid,chaint->xaat_prev[chain->aa[i].chainid][0][0],chaint->xaat_prev[chain->aa[i].chainid][0][1],chaint->xaat_prev[chain->aa[i].chainid][0][2],chaint->xaat_prev[chain->aa[i].chainid][1][0],chaint->xaat_prev[chain->aa[i].chainid][1][1],chaint->xaat_prev[chain->aa[i].chainid][1][2],chaint->xaat_prev[chain->aa[i].chainid][2][0],chaint->xaat_prev[chain->aa[i].chainid][2][1],chaint->xaat_prev[chain->aa[i].chainid][2][2]);
-	} else {
-		casttriplet(chain->xaa[start-1], chaint->xaat[start-1]);
-	}
+
+	casttriplet(chain->xaa_prev[chain->aa[end].chainid], chaint->xaat_prev[chain->aa[end].chainid]);
+
 	for (int i = start; i <= end; i++){
 		casttriplet(chain->xaa[i], chaint->xaat[i]);
 	}
@@ -1234,7 +1231,7 @@ void flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, dou
 	for (int i = start; i <= end; i++) {
 		chain->aa[i] = chaint->aat[i];
 	}
-	tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+	//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 	return 1;
 }
 
