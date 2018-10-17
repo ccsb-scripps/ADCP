@@ -453,6 +453,14 @@ void transpts_initialise() {
 	transPtsCount = atoi(line);
 	if (transPtsCount == 0) {
 		printf("no transpoints found \n");
+
+		Xpts = malloc(1 * sizeof(double));
+		Ypts = malloc(1 * sizeof(double));
+		Zpts = malloc(1 * sizeof(double));
+		Xpts[0] = centerX;
+		Ypts[0] = centerY;
+		Zpts[0] = centerZ;
+		transPtsCount = 1;
 		fclose(transpts);
 		return;
 	}
@@ -2030,6 +2038,7 @@ void ADenergyNoClash(double* ADEnergies, int start, int end, Chain *chain, Chain
 			else if (a->id == 'P') {
 				CaCharge = 0.165;
 				CbCharge = 0.034;
+				NCharge = -0.29;
 			}
 			else if (a->id == 'C') {
 				CbCharge = 0.120;
@@ -2038,10 +2047,18 @@ void ADenergyNoClash(double* ADEnergies, int start, int end, Chain *chain, Chain
 				CbCharge = 0.146;
 			}
 
-			if (a->num==1) {
+			if (a->num == 1) {
+				NCharge = -0.06;
 				HCharge = 0.275;
-				CCharge = 0.484;
-				CaCharge = CaCharge + 0.2;
+				CCharge = 0.21;
+				//CaCharge = 0.28;
+			}
+
+			if (a->num == chain->NAA - 1) {
+				//NCharge = -0.06;
+				OCharge = -0.65;
+				//CCharge = 0.484;
+				CCharge = 0.21;
 			}
 
 			sideChainEnergy = 0.0;
