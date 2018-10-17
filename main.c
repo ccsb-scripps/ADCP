@@ -214,7 +214,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		Chain* swapChains[swapLength];
 
 		/*optimizing parameters*/
-		int noImprovHeatSteps = 1000000; 
+		int noImprovHeatSteps = 500000; 
 		int noImprovStopSteps = 5000000;
 		int swapBadSteps = 50000;
 		int swapMutateSteps = 500000;
@@ -273,6 +273,9 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			//	continue;
 			//targetBest = targetBestTemp;
 
+			if (rand()%1000 < 20)
+				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+
 			inCache = 0;
 			//currTargetEnergy = extenergy(chain);
 			currIndex = i;
@@ -320,7 +323,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				}
 
 				if (1) {
-					transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+					//transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 					currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 										+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
 										+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
@@ -456,7 +459,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//fclose(swapname);
 
 						if (1){
-							transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+							//transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 							currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 											+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
 											+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
@@ -491,7 +494,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//swapInd = swapLength;
 						fprintf(stderr, "swap out good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 						copybetween(chain, swapChains[swapInd]);
-						flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+						//flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 						lastIndex = currIndex;
 						//sim_params->protein_model.external_k[0] = external_k;
 					}
@@ -507,7 +510,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//swapInd = swapLength;
 						fprintf(stderr, "swap out bad curr %g swap %g best %g curriter %d \n", currTargetEnergy, swapEnergy[swapInd], targetBest, i);
 						copybetween(chain, swapChains[swapInd]);
-						flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+						//flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 						lastIndex = currIndex;
 						//sim_params->protein_model.external_k[0] = external_k;
 					}
