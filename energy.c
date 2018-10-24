@@ -1814,8 +1814,9 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 		highHighLowFrac = highFracX * highFracY * lowFracZ,
 		highHighHighFrac = highFracX * highFracY * highFracZ;
 
-	int lowLowLowIndex = getindex(exactGridX, exactGridY, exactGridZ),
-		lowLowHighIndex = lowLowLowIndex + NX * NY,
+	int lowLowLowIndex = getindex(exactGridX, exactGridY, exactGridZ);
+	if (lowLowLowIndex < 0 || lowLowLowIndex > NX*NY*NZ) return 0;
+	int	lowLowHighIndex = lowLowLowIndex + NX * NY,
 		lowHighLowIndex = lowLowLowIndex + NX,
 		lowHighHighIndex = lowLowHighIndex + NX,
 		highLowLowIndex = lowLowLowIndex + 1,
