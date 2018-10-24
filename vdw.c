@@ -49,6 +49,8 @@ inline double vdw_hard_cutoff(vector r1, vector r2, double Rmin, double depth, d
 	sqp = 0.95 * p * p;	// arbitrary adjustment 
 
     //return (dis2 < sqp) ? 10.4 * sqp / dis2 : 0.0;
+
+	//clash_energy_at_hard_cutoff = 6.5;
     return (dis2 < sqp) ? clash_energy_at_hard_cutoff * sqp / dis2 : 0.0;
     
 }
@@ -240,6 +242,8 @@ double exclude_neighbor(AA *a, AA *b, model_params *mod_params)
 		   if ((rg2_b = sidechain_vdw_radius(b->id,2,mod_params->sidechain_properties)) > 0.0);
 		}
 	}
+
+
 
 	/* these should not be counted in, since 1-4 interactions */
 //	if (mod_params->rn > 0.0 && mod_params->rn > 0.0 && skip_14_vdw==0) erg += vdw_fn(a->n, b->n, mod_params->rn + mod_params->rn,mod_params->vdw_depth_n_n, mod_params->rel_vdw_cutoff, mod_params->vdw_Eshift_n_n, mod_params->vdw_clash_energy_at_hard_cutoff);
@@ -442,6 +446,9 @@ double exclude_neighbor(AA *a, AA *b, model_params *mod_params)
 		   eps_g2_b_sqrt = sidechain_vdw_depth_sqrt(b->id,2,mod_params->sidechain_properties);
 		}
 	}
+
+
+
 
 	/* these should not be counted in, since 1-4 interactions */
 //	if (mod_params->rn > 0.0 && mod_params->rn > 0.0 && skip_14_vdw==0) erg += vdw_fn(a->n, b->n, mod_params->rn + mod_params->rn,mod_params->vdw_depth_n_n, mod_params->rel_vdw_cutoff, mod_params->vdw_Eshift_n_n, mod_params->vdw_clash_energy_at_hard_cutoff);
@@ -695,7 +702,9 @@ double exclude_hard(AA *a, AA *b, double d2, model_params *mod_params, int hbond
 			  erg += vdw_erg;
 			}
 		}
-        
+
+
+
 		/* 2. check slightly closer: this is the G-nonG case */
 		if (d2 > (mod_params->vdw_gamma_nongamma_cutoff)[index]) /* cg - o */
 			return erg;
