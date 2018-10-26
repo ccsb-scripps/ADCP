@@ -595,6 +595,7 @@ double stress(AA *a, model_params *mod_params)
 
 double ramabias(AA *prevaa, AA *a, AA *nextaa)
 {
+	//return 0.0;
 	double phi = 0.0, psi = 0.0;
 	double energy = 0.0;
 	int segphi = 0;
@@ -628,7 +629,7 @@ double ramabias(AA *prevaa, AA *a, AA *nextaa)
 	}
 	
 	//fprintf(stderr,"aaa num %d id %c ind %d energy %g segphi %d segpsi %d phi %g psi %g \n",a->num, a->id, ind, -energy, segphi, segpsi, anglephi, anglepsi);
-	//energy = energy < -3.91 ? energy + 3.91 : 0.0;
+	energy = energy < -3.91 ? energy + 3.91 : 0.0;
 	return -energy;	// RT * 0.59219 = kcal/mol
 }
 
@@ -761,7 +762,13 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	//return -hbs * (hdonor(a, b) + hdonor(b, a));
 	
 	double fact = 1.0;
-//	int i = a->num; int j = b->num;
+	int i = a->num; int j = b->num;
+	if (abs(i-j) == 4)
+		fact = 1.2;
+	else if (abs(i-j) == 3)
+		fact = 1.0;
+	else
+		fact = 0.8;
 //	if( Distb( i, i ) * Distb( j, j ) == 0) fact /= 3.0;	
 	//fprintf(stderr,"hbond %d %c",a->num,a->id);
 	//fprintf(stderr," N: %g",a->n[0]);
