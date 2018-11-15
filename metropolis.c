@@ -158,8 +158,8 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	if (sim_params->protein_model.external_potential_type == 5 || sim_params->protein_model.external_potential_type2 == 4)	external_k = sim_params->protein_model.external_k[0];
 	//if (chain->Erg(0, 0) > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
 	//if ((targetBest > 0 || currTargetEnergy - targetBest < 25.) && (externalloss < -10 || loss < -10 )) external_k = 0.05 * external_k;
-	//if (chain->Erg(0, 0) > 1000 && rand()%100<20) external_k = 0.01 * external_k;
-	if (externalloss < -10 || loss < -10) external_k = 0.05 * external_k;
+	//if (chain->Erg(0, 0) < 1000 && rand()%100<10) external_k = 0.05 * external_k;
+	if (externalloss < -10 || loss < -10) external_k = 0.04 * external_k;
 	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//if ((targetBest > 0 || currTargetEnergy - targetBest < 25.) && (externalloss < -10 || loss < -10 )) external_k = 0.05 * external_k;
 
@@ -1376,18 +1376,160 @@ static int crankshaftcyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, dou
 	for (int i = start; i <= end; i++){
 		casttriplet(chain->xaa[reModNum(i , chain->NAA-1)], chaint->xaat[reModNum(i , chain->NAA-1)]);
 	}
-
-
-
-
-
 	//fprintf(stderr,"committing amino acid aa %d - %d\n",start,end);
 	for (int i = start; i <= end; i++) {
 		chain->aa[reModNum(i , chain->NAA-1)] = chaint->aat[reModNum(i , chain->NAA-1)];
 	}
-
 	return 1;
 }
+
+static int rotate_cyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+{	
+	int start, end, len, toss;
+	double alpha;
+	vector a;
+	matrix t;
+	const double discrete = 2.0 / RAND_MAX;    
+	//if(sim_params->NS){ 
+	for (int i = 1; i < chain->NAA; i++){
+		chaint->aat[i].etc = chain->aa[i].etc;
+		chaint->aat[i].num = chain->aa[i].num;
+		chaint->aat[i].id = chain->aa[i].id;
+		chaint->aat[i].chainid = chain->aa[i].chainid;
+		chaint->aat[i].SCRot = chain->aa[i].SCRot;
+	}
+	//}
+    
+
+//TODO multi-chain protein
+	int pivot_around_end = 0;
+	int pivot_around_start = 0;
+
+	toss = rand();
+
+	start = 1;
+	end = chain->NAA - 1;
+
+
+	int direction = toss % 100 > 50 ? 1 : -1;
+	
+
+	// shift the middle segments according to directions
+	for (int j = start + 1; j < end; j++){
+		for (int i = 0; i < 3; i++){
+			chaint->xaat[j][i][0] = chain->xaa[j+direction][i][0];
+			chaint->xaat[j][i][1] = chain->xaa[j+direction][i][1];
+			chaint->xaat[j][i][2] = chain->xaa[j+direction][i][2];
+			(chaint->aat + j)->ca[i] = (chain->aa + j + direction)->ca[i];
+		}
+	}
+
+
+	// handle two terminus, this is designed to work for cyclic peptide but should work for non-cyclic
+	if (direction == 1){
+		for(int i = 0; i < 3; i++){
+			chaint->xaat_prev[0][i][0] = chain->xaa[1][i][0];
+			chaint->xaat_prev[0][i][1] = chain->xaa[1][i][1];
+			chaint->xaat_prev[0][i][2] = chain->xaa[1][i][2];
+			chaint->xaat[end][i][0] = chain->xaa[1][i][0];
+			chaint->xaat[end][i][1] = chain->xaa[1][i][1];
+			chaint->xaat[end][i][2] = chain->xaa[1][i][2];
+			chaint->xaat[1][i][0] = chain->xaa[2][i][0];
+			chaint->xaat[1][i][1] = chain->xaa[2][i][1];
+			chaint->xaat[1][i][2] = chain->xaa[2][i][2];
+			(chaint->aat + start)->ca[i] = (chain->aa + 2)->ca[i];
+		}
+		for (int i = start; i < end; i++){ //moving residues start+1 to end-1
+			carbonate_f(chaint->aat + i + 1, chaint->aat + i, chaint->xaat[i]);
+		}
+	} else {
+		for(int i = 0; i < 3; i++){
+			chaint->xaat_prev[0][i][0] = chain->xaa[end-1][i][0];
+			chaint->xaat_prev[0][i][1] = chain->xaa[end-1][i][1];
+			chaint->xaat_prev[0][i][2] = chain->xaa[end-1][i][2];
+			chaint->xaat[end][i][0] = chain->xaa[end-1][i][0];
+			chaint->xaat[end][i][1] = chain->xaa[end-1][i][1];
+			chaint->xaat[end][i][2] = chain->xaa[end-1][i][2];
+			chaint->xaat[1][i][0] = chain->xaa[end][i][0];
+			chaint->xaat[1][i][1] = chain->xaa[end][i][1];
+			chaint->xaat[1][i][2] = chain->xaa[end][i][2];
+			(chaint->aat + end)->ca[i] = (chain->aa + end -1)->ca[i];
+		}
+		for (int i = end - 1; i > start; i--){ //moving residues end-1 to start+1
+			carbonate_b(chaint->aat + i, chaint->aat + i + 1, chaint->xaat[i]);
+		}
+	}
+
+	//if (swappp == 1) fprintf(stderr, "s %d e %d \n", start, end);
+
+	//building the peptide bonds of the amino acids
+	//by now start and end have been adjusted if pivoting
+	for (int i = start; i <= end; i++){
+		//if starting at the beginning of the chain with pivot or crankshaft
+		//fprintf(stderr,"metropolis pivot %d", pivot_around_end);
+		//fprintf(stderr," start %d", start);
+		//fprintf(stderr," current %d", i);
+		//if (pivot_around_end == 1 && i == start){
+		//	fprintf(stderr,"\n");
+		//} else {
+		//	fprintf(stderr," chain(current) %d", chain->aa[i].chainid);
+		//	fprintf(stderr," chain(prev) %d\n", chain->aa[i-1].chainid);
+		//}
+		if (i == start)  {
+			//use this chain's xaa_prev for the the direction of the N-terminal NH
+			//fprintf(stderr,"acidate %d with xaat_prev1 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat_prev[chain->aa[i].chainid][0][0],chaint->xaat_prev[chain->aa[i].chainid][0][1],chaint->xaat_prev[chain->aa[i].chainid][0][2],chaint->xaat_prev[chain->aa[i].chainid][1][0],chaint->xaat_prev[chain->aa[i].chainid][1][1],chaint->xaat_prev[chain->aa[i].chainid][1][2],chaint->xaat_prev[chain->aa[i].chainid][2][0],chaint->xaat_prev[chain->aa[i].chainid][2][1],chaint->xaat_prev[chain->aa[i].chainid][2][2]);
+			//fprintf(stderr,"acidate %d with xaat2 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat[i][0][0],chaint->xaat[i][0][1],chaint->xaat[i][0][2],chaint->xaat[i][1][0],chaint->xaat[i][1][1],chaint->xaat[i][1][2],chaint->xaat[i][2][0],chaint->xaat[i][2][1],chaint->xaat[i][2][2]);
+			acidate(chaint->aat + i, chaint->xaat_prev[chain->aa[i].chainid], chaint->xaat[i], sim_params);
+		} else {
+			//fprintf(stderr,"acidate %d with xaat1 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat[i-1][0][0],chaint->xaat[i-1][0][1],chaint->xaat[i-1][0][2],chaint->xaat[i-1][1][0],chaint->xaat[i-1][1][1],chaint->xaat[i-1][1][2],chaint->xaat[i-1][2][0],chaint->xaat[i-1][2][1],chaint->xaat[i-1][2][2]);
+			//fprintf(stderr,"acidate %d with xaat2 %g %g %g %g %g %g %g %g %g\n",i,chaint->xaat[i][0][0],chaint->xaat[i][0][1],chaint->xaat[i][0][2],chaint->xaat[i][1][0],chaint->xaat[i][1][1],chaint->xaat[i][1][2],chaint->xaat[i][2][0],chaint->xaat[i][2][1],chaint->xaat[i][2][2]);
+			acidate(chaint->aat + i, chaint->xaat[i - 1], chaint->xaat[i], sim_params);
+		}
+	}
+
+
+	//fprintf(stderr, "before rotate %g \n", chain->Erg(0,0));
+	double eK = sim_params->protein_model.external_k[0];
+	//sim_params->protein_model.external_k[0] = 0.05;
+    /* testing if move is allowed */
+	if (!allowed(chain,chaint,biasmap,start, end, logLstar,currE, sim_params))
+		return 0;	/* disregard rejected changes */
+	fprintf(stderr, "after rotate %g \n", chain->Erg(0,0));
+	sim_params->protein_model.external_k[0] = eK;
+
+	tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+	//double ADEnergy_Chaint[chain->NAA-1];
+	//double* ADEnergy_Chaint;
+	//ADenergyNoClash(ADEnergy_Chaint, 1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
+
+	
+
+	//chain->Erg(0, 0) = 0.0;
+	//
+	//for (int j = 1; j < chain->NAA; j++) {
+	//	chain->Erg(0, j) = ADEnergy_Chaint[j - 1];
+	//    chain->Erg(0, 0) += chain->Erg(0, j);
+	//}
+
+
+	/* commit accepted changes */
+	
+	//fprintf(stderr,"committing amino acid xaa %d - %d\n",start-1,end);
+
+	casttriplet(chain->xaa_prev[chain->aa[end].chainid], chaint->xaat_prev[chain->aa[end].chainid]);
+
+	for (int i = start; i <= end; i++){
+		casttriplet(chain->xaa[i], chaint->xaat[i]);
+	}
+
+	fprintf(stderr,"committing rotating amino acid aa %d - %d\n",start,end);
+	for (int i = start; i <= end; i++) {
+		chain->aa[i] = chaint->aat[i];
+	}
+	tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+	return 1;
+}
+
 
 static int crankshaft_adk(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {	
@@ -1687,7 +1829,7 @@ int move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double 
 		}*/
 	}
 
-	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 20 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 10 && rotate_cyclic(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 		moved = 1;
