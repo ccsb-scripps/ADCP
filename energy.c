@@ -362,10 +362,10 @@ void biasmap_finalise(Biasmap *biasmap){
 /*make energy grid map smoother*/
 double lowerGridEnergy(double E) {
 	//return E;
-	//if (E > 2.718) {
+	if (E > 2.718) {
 		//return log10f(E) + 9;
-	//	return log(E) + 1.718;
-	//}
+		return log(E) + 1.718;
+	}
 	//if (E > 10) {
 	//	//return log10f(E) + 9;
 	//	return log(E-9) + 10;
@@ -764,11 +764,11 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	double fact = 1.0;
 	int i = a->num; int j = b->num;
 	if (abs(i-j) == 4)
-		fact = 1.2;
+		fact = 1.0;
 	else if (abs(i-j) == 3)
 		fact = 1.0;
 	else
-		fact = 0.8;
+		fact = 1.0;
 //	if( Distb( i, i ) * Distb( j, j ) == 0) fact /= 3.0;	
 	//fprintf(stderr,"hbond %d %c",a->num,a->id);
 	//fprintf(stderr," N: %g",a->n[0]);
@@ -2506,6 +2506,21 @@ double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 	else
 		seqdist = 1000 * abs(b->chainid - a->chainid);
 
+
+        if (mod_params->external_potential_type2 == 4 && abs(seqdist) == 1 ) {
+                double CaDistance = 0.0;
+                CaDistance = distance(a->ca, b->ca);
+		double NCDistance = 0.0;
+		if (seqdist == 1)
+                	NCDistance = distance(b->n, a->c);
+		else
+			NCDistance = distance(a->n,b->c);
+                if (1 || CaDistance > 5) retval += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+                if (1 || NCDistance > 1.5 || NCDistance < 1.2) retval += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
+        }
+
+
+
 	switch ( seqdist) {
 	case 1:
 		retval += exclude_neighbor(a, b, mod_params) + hbond(biasmap,a, b, mod_params) + proline(a, b);
@@ -2549,12 +2564,12 @@ double cyclic_energy(AA *a, AA *b, int type) {
 		HODistance = distance(a->h, b->o);
 		NODistance = distance(a->n, b->o);
 		HCDistance = distance(a->h, b->c);
-
-		if (1 || CaDistance > 5) ans += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-		//if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
-		//if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
-		//if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
-		//if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
+		
+		if (1 || CaDistance > 5) ans += 10 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+		if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 10 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345);
+		if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
+		if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
+		if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
 	}
 	return ans;
 	//return 0.;
