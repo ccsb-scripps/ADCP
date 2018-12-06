@@ -185,19 +185,17 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 	energy_matrix_print(chain, biasmap, &(sim_params->protein_model));
 	//stop("I will stop here,\n");
 	if (sim_params->protein_model.opt == 1) {
+		// targetBest and currTargetEnergy are two global variables
 		targetBest = 99999.;
+		currTargetEnergy = 99999.;
 		double targetBestTemp = targetBest;
 		//double targetBestPrev = targetBest;
-		currTargetEnergy = 99999.;
-		double lastTargetEnergy = 9999.;
-		
-		int lastIndex = 0; //Index for last event
-
+		double lastTargetEnergy = 9999.;		
+		int lastIndex = 0; //Index for last last good energy 
 		int resetIndex = 0; //Index for last annealing reset
-		int lastGoodIndex = 0;
+		int lastGoodIndex = 0; //Index for last good energy swap in
 		int bestIndex = 0; //Index for last best energy found
-
-		int mutateIndex = -999999;
+		int mutateIndex = -999999; //Index for last transmutate
 		int moved = 0;
 		int stopSignal = 0;
 		int swapInd = 0;
@@ -214,22 +212,23 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		Chain* swapChains[swapLength];
 
 		/*optimizing parameters*/
-		int noImprovHeatSteps = 300000;
+		int noImprovHeatSteps = 1000000;
 		int noImprovStopSteps = 10000000;
-		int swapBadSteps = 10000;
-		int swapMutateSteps = 100000;
+		int swapBadSteps = 50000;
+		int swapMutateSteps = 200000;
 		int swapGoodSteps = 100000;
 		double goodEnergyDiff = 5; //5kcal=8.33 3kcal=5
 		double rmsdCutoff = 4; // swapping clusters rmsd cutoff
 		double heatFactor = 0.5; // starting temp while annealing
-		double annealFactor = 1.02; // 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
-		int annealSteps = 10000;
+		double annealFactor = 1.02; // 2 = 1.02^35 = 1.015^47 = 1.012^58 = 2 ,first 35 *10000 to reach room temperature
+		int annealSteps = 10000; //temp change step in annealing
 		int swapAneal = 1; //swapping while annealing, 0 false, 1 true.
 		int swapGoodProb = 5000; //chance of swapping a good pose after swapGoodSteps, out of 10000
 		int swapBadProb = 9500; //chance of swapping a bad pose after swapBadSteps, out of 10000
 		int initTransMutate = 0; //initialize with randomize translation
 		int swapTransMutate = 1; //transMutate during simulation
-		int swapFlipChain = 0;
+		int swapFlipChain = 0; //flipChain during simulation
+
 		if (sim_params->infile == NULL) initTransMutate = 1; //default for seq input initialize with randomize translation
 
 		//initialize swapping pool, last element is with the best energy
@@ -253,7 +252,6 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		for (i = 1; i < sim_params->stretch * sim_params->pace; i++) {
 			if (stopSignal) break;
 			//targetBestTemp = targetBest;
-
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
 				if ((i % 1000000 == 1 && i < 10000000) || (i % 10000000 == 1)) {
 					energy_matrix_print(swapChains[swapLength], biasmap, &(sim_params->protein_model));
@@ -268,15 +266,11 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					moved = move(chain, chaint, biasmap, 0, &temp, 0, sim_params);
 				}
 			}
-			//if (moved == 0)
-			//	continue;
-			//targetBest = targetBestTemp;
 
 			if (moved && rand()%1000 < 10)
 				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 0);
 
 			inCache = 0;
-			//currTargetEnergy = extenergy(chain);
 			currIndex = i;
 			currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 				+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
@@ -309,24 +303,20 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				lastTargetEnergy = currTargetEnergy;
 
 			}
+			//best energy found
 			if (currTargetEnergy - targetBest < -0.001) {
-				//write out best solutions;
-				//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-				//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-		                //energy_matrix_print(chain, biasmap, &(sim_params->protein_model));
 				//reset temp;
 				if (sim_params->protein_model.external_k[0] != external_k && currIndex > 100000) {
 					fprintf(stderr, "best energy found, reset temp\n");
 					sim_params->protein_model.external_k[0] = external_k;
 				}
 
-				if (1) {
-					transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
-					currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
-										+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
-										+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
-					targetBest = currTargetEnergy;
-				}
+				//do a hard minimization
+				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
+				currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
+									+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
+									+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
+				targetBest = currTargetEnergy;
 
 				//record energy and reset indices;
 				resetIndex = currIndex;
@@ -360,12 +350,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					}
 					
 					//sprintf(swapname, "swap%d.pdb", swapInd);
-					//
 					//swapFile = fopen(swapname, "w+");
 					//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 					//fclose(swapname);
-					//copybetween(chain, swapChains[swapInd]);
-					
+					//copybetween(chain, swapChains[swapInd]);				
 
 					fprintf(stderr, "swap in best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 					copybetween(swapChains[swapInd], chain);
@@ -376,6 +364,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					swapEnergy[swapInd2] = swapEnergy[swapLength];
 				}
 				targetBest = currTargetEnergy;
+				//write out best solutions to output pdb
 				if (currTargetEnergy < 0) {
 					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
@@ -388,9 +377,6 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				//swapFile = fopen(swapname, "w+");
 				//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 				//fclose(swapname);
-				//if (rand() * 8 < RAND_MAX) copybetween(bestChain, chain);
-				//copybetween(bestChain, chain);
-				//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), "Gary_Hack.pdb", totenergy(chain));
 			}
 			else if ((currIndex - bestIndex) > noImprovStopSteps) {
 				fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i, bestIndex);
@@ -416,7 +402,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					mutateIndex = currIndex;
 				} else if (rand()%100 < 0 && targetBest < 0 && swapFlipChain) {
 					fprintf(stderr, "before flip %g \n",extenergy(chain));
-					flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+					rotate_cyclic(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 					transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
 					fprintf(stderr, "after flip %g \n",extenergy(chain));
 					mutateIndex = currIndex;
@@ -426,13 +412,15 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				lastIndex = currIndex;
 				fprintf(stderr, "swap out no improv curr %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 			}
+			// good energy found
 			else if (currTargetEnergy - targetBest <= goodEnergyDiff) {
-
-
+				// also do a hard minimization
 				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
+				// update the energy
 				currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 								+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
 								+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
+				// if the energy after opt becomes the best, do the best energy procedure
 				if (currTargetEnergy < targetBest) {
 					fprintf(stderr, "swap in good to best %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapLength], targetBest);
 					copybetween(swapChains[swapLength], chain);
@@ -445,16 +433,16 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					if (currTargetEnergy < 0) {
 						fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 						tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					}
-					
+					}					
 				}
-
-				
+				// check RMSD with the swapping pool
 				for (ind = 0; ind < swapLength; ind++) {
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
+					// it is within the clusters
 					if (calculateRMSD(swapChains[ind], chain) < rmsdCutoff) {
 						inCache = 1;
-						if (currTargetEnergy < swapEnergy[ind] - 1) {
+						// update the energy and swap in if curr has better energy
+						if (currTargetEnergy < swapEnergy[ind]) {
 							copybetween(swapChains[ind], chain);
 							fprintf(stderr, "swap between good curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[ind], targetBest);
 							swapEnergy[ind] = currTargetEnergy;
@@ -463,15 +451,12 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 							//sprintf(swapname, "swap%d.pdb", ind);
 							//swapFile = fopen(swapname, "w+");
 							//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
-							//bestIndex = i*sim_params->pace + j;
-							//sim_params->protein_model.external_k[0] = external_k;
 							lastGoodIndex = currIndex;
 						}
-						//fprintf(stderr, "inCache2");
 						break;
 					}
 				}
-				//fprintf(stderr, "swapped2");
+				// it is a new cluster, swap in
 				if (inCache != 1) {
 					if (swapEnergy[swapInd] != 9999.) {
 						swapInd = rand() % swapLength;
@@ -486,15 +471,11 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 						//fclose(swapname);
 
-
-
 						copybetween(swapChains[swapInd], chain);
 						swapEnergy[swapInd] = currTargetEnergy;
 						//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 						//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 						lastGoodIndex = currIndex;
-						//sim_params->protein_model.external_k[0] = external_k;
-						//bestIndex = i*sim_params->pace + j;
 					}
 				}
 
@@ -508,7 +489,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						copybetween(chain, swapChains[swapInd]);
 						if (rand()%100 < 10 && targetBest < 0 && swapFlipChain) {
 							fprintf(stderr, "before flip %g \n",extenergy(chain));
-							flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+							rotate_cyclic(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 							transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
 							fprintf(stderr, "after flip %g \n",extenergy(chain));
 							mutateIndex = currIndex;
@@ -530,7 +511,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						copybetween(chain, swapChains[swapInd]);
 						if (rand()%100 < 0 && targetBest < 0 && swapFlipChain) {
 							fprintf(stderr, "before flip %g \n",extenergy(chain));
-							flipChain(chain, chaint, biasmap, 0, 0, &temp, sim_params);
+							rotate_cyclic(chain, chaint, biasmap, 0, 0, &temp, sim_params);
 							transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
 							fprintf(stderr, "after flip %g \n",extenergy(chain));
 							mutateIndex = currIndex;
@@ -611,6 +592,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			}
 		}
 	}
+	/*original MC implementation*/
 	else {
 		for (i = 1; i <= sim_params->stretch; i++) {
 			if (!sim_params->keep_amplitude_fixed) { // potentially alter amplitude
@@ -902,9 +884,11 @@ void set_random_seed(simulation_params *sim_params) {
 
 int main(int argc, char *argv[])
 {
+	//set a timer
+	time_t startTime = time(NULL);
+
 	//char *seq;
 	simulation_params sim_params;
-
 	
 	signal(SIGTERM, graceful_exit);
 
@@ -925,8 +909,7 @@ int main(int argc, char *argv[])
 
 	set_random_seed(&sim_params);
 
-	//set a timer
-	time_t startTime = time(NULL);
+
 
 	/* set different default simulation params for NS and MC */
 	if(sim_params.NS){
@@ -949,18 +932,12 @@ int main(int argc, char *argv[])
 	model_param_read(sim_params.prm,&(sim_params.protein_model),&(sim_params.flex_params));
 
 	ramaprob_initialise();
-	if (sim_params.protein_model.external_potential_type == 5) {
-
-		//Cgridmap_initialise();
+	if (sim_params.protein_model.external_potential_type == 5) {		
 		transpts_initialise();
 		gridbox_initialise();
-
-		/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
-
+		/* elements are 0:C, 1:N, 2:O, 3:HD, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
 		gridmap_initialise("rigidReceptor.C.map", 0);
-		//fprintf(stderr, "C Grid map initialisation finished \n");
 		gridmap_initialise("rigidReceptor.N.map", 1);
-		//fprintf(stderr, "N Grid map initialisation finished \n");
 		gridmap_initialise("rigidReceptor.OA.map", 2);
 		gridmap_initialise("rigidReceptor.HD.map", 3);
 		gridmap_initialise("rigidReceptor.S.map", 4);
@@ -968,12 +945,7 @@ int main(int argc, char *argv[])
 		gridmap_initialise("rigidReceptor.NA.map", 6);
 		gridmap_initialise("rigidReceptor.e.map", 7);
 		gridmap_initialise("rigidReceptor.d.map", 8);
-
-
-
 		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
-
-
 		fprintf(stderr, "AD Grid maps initialisation finished \n");
 	}
 
@@ -1106,7 +1078,6 @@ int main(int argc, char *argv[])
 	fclose(fptr1);
 #endif
 
-
 	finalize(chain,chaint,biasmap); //free memory allocated in initialize
      
 	} else { /* Nested Sampling, parallel or serial */
@@ -1115,7 +1086,6 @@ int main(int argc, char *argv[])
 	
 	param_finalise(&sim_params);
 
-
 #ifdef PARALLEL
     /* finalise MPI */
     MPI_Finalize();
@@ -1123,6 +1093,7 @@ int main(int argc, char *argv[])
 #endif
 
 	fprintf(stderr, "best target energy %g\n", targetBest);
+	// free memory in AutoPK
 	if (sim_params.protein_model.external_potential_type == 5) {
 		free(Xpts);
 		free(Ypts);
@@ -1133,6 +1104,8 @@ int main(int argc, char *argv[])
 	free(ramaprob);
 	free(alaprob);
 	free(glyprob);
+
+	//print out the timing
 	fprintf(stderr,"The program has successfully finished in %d seconds. :)  Bye-bye!\n", time(NULL)- startTime);
 	return EXIT_SUCCESS;
 }

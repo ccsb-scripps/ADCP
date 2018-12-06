@@ -140,9 +140,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		}
 	}
 	/*Also take into account the global_energy term */
-
-
-	//q = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
+	double SSEnergy = global_energy(start,end,chain,chaint,biasmap,&(sim_params->protein_model));
+	double SSloss = 0.0;
+	SSloss = chain->Erg(chain->NAA - 1, 0) - SSEnergy;
 	//loss += (chain->Erg(0, 0) - q);
 	//fprintf(stderr,"MC move q = %g, loss = %g,",q,loss);
 	//double externalloss = (chain->Erg(0, 0) - q);
@@ -159,7 +159,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	//if (chain->Erg(0, 0) > 5 || currTargetEnergy - targetBest > 15) external_k = 0.5;
 	//if ((targetBest > 0 || currTargetEnergy - targetBest < 25.) && (externalloss < -10 || loss < -10 )) external_k = 0.05 * external_k;
 	//if (chain->Erg(0, 0) < 1000 && rand()%100<10) external_k = 0.05 * external_k;
-	if (externalloss < -10 || loss < -10) external_k = 0.04 * external_k;
+	//if (externalloss < -10 || loss < -10) external_k = 0.15 * external_k;
 	//if (chain->Erg(0, 0) > 20 ||chain->Erg(0, 0) > 50) external_k = 0.2 * external_k;
 	//if ((targetBest > 0 || currTargetEnergy - targetBest < 25.) && (externalloss < -10 || loss < -10 )) external_k = 0.05 * external_k;
 
@@ -182,8 +182,9 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		externalloss += chain->Erg(1, 0) - cyclicBondEnergy;
 	}
 
-
-	loss = loss + externalloss;
+	if (loss < -10) external_k = 0.15 * external_k;
+	loss = loss + SSloss + externalloss;
+	//loss = 0.25 * (loss + SSloss) + externalloss;
 	//if (externalloss > 0.) loss = loss + externalloss;
 
 
@@ -250,21 +251,22 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	if (sim_params->protein_model.external_potential_type2 == 4) {
 		chain->Erg(1, 0) = cyclicBondEnergy;
 	}
+	chain->Erg(chain->NAA - 1, 0) = SSEnergy;
 	*currE -= internalloss + externalloss;
 	//free(ADEnergy_Chaint);
     return 1;
 }
-/* Make a crankshaft move.  This is a local move that involves
-the crankshaft rotation of up to 4 peptde bonds.  Propose a
-move, and apply the Metropolis criteria. */
+/* Make a transmutate move. A translational move to a featured point*/
 void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
 	if (sim_params->protein_model.external_potential_type != 5) {
 		return 0;
 	}
-	/*translational move*/
+
+	//no transPts identified. transPtsCount == 1 means only the center of box is found.
 	if (transPtsCount == 1) return;
 	double transvec[3];
+	//copy chain to chaint
 	for (int j = 1; j < chain->NAA; j++){
 		chaint->aat[j].etc = chain->aa[j].etc;
 		chaint->aat[j].num = chain->aa[j].num;
@@ -294,13 +296,16 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 	}
 	casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
 
+	//get a random transpoints
 	int transPtsID = rand() % transPtsCount;
 
-
+	//get the transvec
 	int centerAAID = (chain->NAA + 1) / 2;
 	transvec[0] = - chain->aa[centerAAID].c[0] + Xpts[transPtsID];
 	transvec[1] = - chain->aa[centerAAID].c[1] + Ypts[transPtsID];
 	transvec[2] =  -chain->aa[centerAAID].c[2] + Zpts[transPtsID];
+
+	//apply the transvec to all atoms
 	double movement = 0;
 	//fprintf(stderr, "translational move %g %g %g %d \n", transvec[0][vecind], transvec[1][vecind], transvec[2][vecind],chain->NAA);
 	for (int i = 0; i < 3; i++) {
@@ -323,36 +328,15 @@ void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, d
 			if (chaint->aat[j].id != 'G') {
 				chaint->aat[j].cb[i] += movement;
 			}
-
 		}
 	}
 
+	//score the external energy, the internal energy stays the same
 	double ADEnergy_Chaint[chain->NAA-1];
 	//double* ADEnergy_Chaint;
 	ADenergyNoClash(ADEnergy_Chaint, 1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
 
-	//double* ADEnergy_Chaint;
-	//for (int i = 1; i <= chain->NAA - 1; i++){
-	//	ADEnergy_Chaint[i - 1] = ADenergy(chaint->aat + i, &(sim_params->protein_model));
-	//}
-
-	//ADEnergy_Chaint = ADenergyNoClash(1, chain->NAA-1,chain,chaint,&(sim_params->protein_model), 0);
-
-	//for (int i = 1; i <= chain->NAA-1; i++){
-	//	//ADEnergy_Chaint[i-1] = chaint->Ergt(0, i);;
-	//	externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-1];
-	//}	
-
-
-
-	//externalloss += chain->Erg(0, i) - ADEnergy_Chaint[i-start];
-
-
-	//double transExtEne = global_energy(1, chain->NAA - 1, chain, chaint, biasmap, &(sim_params->protein_model));
-
-
-	//if loss is negative, it's worse, bad
-	//double externalloss = chain->Erg(0, 0) - transExtEne;
+	//default is to accept all transmutate move and commit the move
 	casttriplet(chain->xaa[0], chaint->xaat[0]);
 
 	for (int i = 1; i <= chain->NAA - 1; i++) {
@@ -545,7 +529,7 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	}
 }
 
-/* Make a translation move. */
+/* Do a translational optimization in a Solis-Wets fashion. */
 int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params, int mod)
 {
 	if (sim_params->protein_model.external_potential_type != 5) {
@@ -555,6 +539,8 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 	//
 	//double transvec[3][chain->NAA - 1];
 	double transvec[3];
+
+	//copy chain to chiant
 	int i, j;
 	for (j = 1; j < chain->NAA; j++){
 		chaint->aat[j].etc = chain->aa[j].etc;
@@ -582,29 +568,12 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 		chaint->xaat_prev[0][i][1] = chain->xaa_prev[0][i][1];
 		chaint->xaat_prev[0][i][2] = chain->xaa_prev[0][i][2];
 	}
-	//casttriplet(chaint->xaat[0], chain->xaa[0]);
-	//for (i = 1; i <= chain->NAA - 1; i++) {
-	//	casttriplet(chaint->xaat[i], chain->xaa[i]);
-	//}
-	//casttriplet(chaint->xaat_prev[chain->aa[1].chainid], chain->xaa_prev[chain->aa[1].chainid]);
-	
-	//for (int i = 1; i <= chain->NAA -1; i++) {
-	//	fprintf(stderr, " %d", (chain->aa + i)->SCRot);
-	//}
-	//
-	//
-	//for (int i = 1; i <= chain->NAA -1; i++) {
-	//	fprintf(stderr, " %g", chain->Erg(0,i));
-	//}
-	//
-	//
-	//fprintf(stderr," curr rot transopt !!!\n");
 
 	double movement[3];
 	int noImprovStep = 0;
 	double currExtE = 0.0;
 	double currADEnergy[chain->NAA-1], ADEnergy_Chaint[chain->NAA-1];
-	double extE = chain->Erg(0,0);
+	double extE = chain->Erg(0,0); //This is the current best E and will be updated
 	int step = 0;
 	int maxStep = 10;
 	int maxNoImprovStep = 3;
@@ -685,8 +654,6 @@ int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doubl
 		//	fprintf(stderr, " %d", (chaint->aat + i)->SCRot);
 		//}
 		//fprintf(stderr," transopt %g %g %g %g %g %d!!!\n", currExtE, extE ,movement[0] ,movement[1], movement[2], noImprovStep);
-
-
 	}
 	if (extE - chain->Erg(0,0) > -0.00001) return 0;
 	//casttriplet(chain->xaa_prev[chain->aa[1].chainid], chaint->xaat_prev[chain->aa[1].chainid]);
@@ -1115,7 +1082,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 }
 
 
-
+/*reverse the chain first amino to the last position, reverse all CA atom and rebuild the peptide*/
 int flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {	
 	int start, end, len, toss;
@@ -1250,7 +1217,7 @@ int flipChain(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, doub
 
 /* Make a crankshaft move.  This is a local move that involves
    the crankshaft rotation of up to 4 peptde bonds.  Propose a
-   move, and apply the Metropolis criteria. */
+   move, and apply the Metropolis criteria. cyclic allows CS move across the first and last AA*/
 static int crankshaftcyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {	
 	int start, end, len, toss;
@@ -1383,7 +1350,8 @@ static int crankshaftcyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, dou
 	return 1;
 }
 
-static int rotate_cyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+/*shift the peptide, shift all CA atoms and rebuild the peptide*/
+int rotate_cyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {	
 	int start, end, len, toss;
 	double alpha;
@@ -1490,7 +1458,7 @@ static int rotate_cyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double
 
 	//fprintf(stderr, "before rotate %g \n", chain->Erg(0,0));
 	double eK = sim_params->protein_model.external_k[0];
-	//sim_params->protein_model.external_k[0] = 0.05;
+	sim_params->protein_model.external_k[0] = 0.01;
     /* testing if move is allowed */
 	if (!allowed(chain,chaint,biasmap,start, end, logLstar,currE, sim_params))
 		return 0;	/* disregard rejected changes */
@@ -1530,7 +1498,7 @@ static int rotate_cyclic(Chain * chain, Chaint *chaint, Biasmap *biasmap, double
 	return 1;
 }
 
-
+/*crankshaft move with longer moving segments*/
 static int crankshaft_adk(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {	
 	int start, end, len, toss;
@@ -1829,7 +1797,7 @@ int move(Chain *chain,Chaint *chaint, Biasmap *biasmap, double logLstar, double 
 		}*/
 	}
 
-	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 10 && rotate_cyclic(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
+	else if (sim_params->protein_model.external_potential_type == 5 && rand() % 100 < 10 && transmove(chain, chaint, biasmap, sim_params->amplitude, logLstar, currE, sim_params) ) {	/* accepted */
 	//	//sim_params->accept_counter++;
 		transaccept++;
 		moved = 1;

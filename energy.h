@@ -19,7 +19,6 @@ void energy_matrix_calculate(Chain *,Biasmap *, model_params *mod_params);
 double totenergy(Chain *chain);
 double locenergy(Chain *chain);
 double extenergy(Chain *chain);
-double targetenergy(Chain *chain);
 double firstlastenergy(Chain *chain);
 
 void energy_matrix_print(Chain *,Biasmap *, model_params *mod_params);
@@ -32,7 +31,7 @@ double centerX, centerY, centerZ, spacing;
 int NX, NY, NZ;
 double targetBest, currTargetEnergy;
 //double totalEBest;
-double lowerGridEnergy(double);
+double lower_gridenergy(double);
 void gridbox_initialise();
 void transpts_initialise();
 void ramaprob_initialise();

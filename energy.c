@@ -98,7 +98,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 
 		for (i = 1; i < chain->NAA; i++) {
 			chain->Erg(0, i) = ADenergies[i-1];
-			//fprintf(stderr," aaa %d %g \n",i, chain->Erg(0,i));
+			fprintf(stderr," aaa %d %g \n",i, chain->Erg(0,i));
 			//chain->Erg(0, i) = ADenergy(chain->aa + i, mod_params);
 			chain->Erg(0, 0) += chain->Erg(0, i);
 		}
@@ -106,6 +106,8 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 		//chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
 
 	}
+
+	chain->Erg(chain->NAA - 1, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
 
 	if (mod_params->external_potential_type2 == 4)	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 	/* diagonal */
@@ -165,36 +167,15 @@ double locenergy(Chain *chain)
 	return toten;
 }
 
+/* Return the external energy. */
 double extenergy(Chain *chain)
 {
 	return chain->Erg(0, 0) + chain->Erg(1, 0);
 }
 
-
-
-double targetenergy(Chain *chain)
-{
-	int i, j;
-	//double sqrtNAA = sqrt(chain->NAA);
-	//double sqrtNAA = chain->NAA;
-	double sqrtNAA = 4.;
-	double toten = sqrtNAA * chain->Erg(0, 0);
-
-	//fprintf(stderr, "tote... %g\n", chain->Erg(0,0));
-	for (i = 1; i < chain->NAA; i++)
-		for (j = 1; j <= i; j++) {
-			toten += chain->Erg(i, j);
-			//		fprintf(stderr, "%g ", chain->Erg(i,j));
-		}
-	//	fprintf(stderr,"\n");
-
-	return toten / sqrtNAA;
-	//return chain->Erg(0, 0);
-}
-
+/* Return the energy between first and last energy. */
 double firstlastenergy(Chain *chain)
 {
-
 	return chain->Erg(1, chain->NAA - 1);
 	//return chain->Erg(0, 0);
 }
@@ -360,12 +341,12 @@ void biasmap_finalise(Biasmap *biasmap){
 
 
 /*make energy grid map smoother*/
-double lowerGridEnergy(double E) {
+double lower_gridenergy(double E) {
 	//return E;
-	if (E > 2.718) {
+	//if (E > 2.718) {
 		//return log10f(E) + 9;
-		return log(E) + 1.718;
-	}
+	//	return log(E) + 1.718;
+	//}
 	//if (E > 10) {
 	//	//return log10f(E) + 9;
 	//	return log(E-9) + 10;
@@ -422,36 +403,38 @@ void gridbox_initialise() {
 }
 
 
-/* elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA           */
+/* initialise the grip maps from the file, elements are 0:C, 1:N, 2:O, 3:H, 4:S, 5:CA, 6:NA*/
 void gridmap_initialise(char *filename, int atype) {
-	FILE *gridmap = NULL;
-	gridmap = fopen(filename, "r");
+	FILE *gridmap_file = NULL;
+	gridmap_file = fopen(filename, "r");
+	if (gridmap_file == NULL) {
+		stop("Missing gridmap_file.map file.");
+	}
 	char line[256];
 	int i = 0;
-	double *currgridmapvalues = malloc(NX*NY*NZ * sizeof(double));
-	while (fgets(line, sizeof(line), gridmap)) {
+	double *curr_gridmap_values = malloc(NX*NY*NZ * sizeof(double));
+	while (fgets(line, sizeof(line), gridmap_file)) {
 		if (i < 6) {
 			i++;
 			continue;
 		}
-		currgridmapvalues[i - 6] = lowerGridEnergy(atof(line));
+		curr_gridmap_values[i - 6] = lower_gridenergy(atof(line));
 		i++;
 	}
-	fclose(gridmap);
-	gridmapvalues[atype] = currgridmapvalues;
+	fclose(gridmap_file);
+	gridmapvalues[atype] = curr_gridmap_values;
 
 }
 
-
+/* initialise the tranpoints from the file, if no transpoints found, add the box center */
 void transpts_initialise() {
-	FILE *transpts = NULL;
-	transpts = fopen("transpoints", "r");
+	FILE *transpts_file = NULL;
+	transpts_file = fopen("transpoints", "r");
 	char line[256];
-	int i = 0, j = 0;
-	
-	fgets(line, sizeof(line), transpts);
+	int i = 0, j = 0;	
+	fgets(line, sizeof(line), transpts_file);
 	transPtsCount = atoi(line);
-	if (transPtsCount == 0) {
+	if (transPtsCount == 0 || transpts_file == NULL) {
 		printf("no transpoints found \n");
 
 		Xpts = malloc(1 * sizeof(double));
@@ -461,7 +444,7 @@ void transpts_initialise() {
 		Ypts[0] = centerY;
 		Zpts[0] = centerZ;
 		transPtsCount = 1;
-		fclose(transpts);
+		fclose(transpts_file);
 		return;
 	}
 	Xpts = malloc(transPtsCount * sizeof(double));
@@ -469,7 +452,7 @@ void transpts_initialise() {
 	Zpts = malloc(transPtsCount * sizeof(double));
 
 
-	while (fgets(line, sizeof(line), transpts)) {
+	while (fgets(line, sizeof(line), transpts_file)) {
 		char * pch;
 		pch = strtok(line, " ");
 		j = 0;
@@ -490,22 +473,25 @@ void transpts_initialise() {
 		i++;
 	}
 
-	printf("transpoints box initialise succuss %i \n", transPtsCount);
-	fclose(transpts);
+	printf("transpoints initialise success with %i transpoints \n", transPtsCount);
+	fclose(transpts_file);
 
 }
 
+/*initialise the ramachandra probability from ramaprob.data file*/
 void ramaprob_initialise() {
-	FILE *ramaProbFile = NULL;
-	ramaProbFile = fopen("ramaprob.data", "r");
+	FILE *ramaprob_file = NULL;
+	ramaprob_file = fopen("ramaprob.data", "r");
+	if (ramaprob_file == NULL) {
+		stop("Missing ramaprob.data file.");
+	}
 	char line[256];
 	int i = 0, j = 0;
-	
 	ramaprob = malloc(32400 * sizeof(double));
 	alaprob = malloc(32400 * sizeof(double));	
 	glyprob = malloc(32400 * sizeof(double));
 
-	while (fgets(line, sizeof(line), ramaProbFile)) {
+	while (fgets(line, sizeof(line), ramaprob_file)) {
 		char * pch;
 		pch = strtok(line, " ");
 		j = 0;
@@ -526,8 +512,8 @@ void ramaprob_initialise() {
 		i++;
 	}
 
-	printf("ramaprob initialise succuss %i \n", transPtsCount);
-	fclose(ramaProbFile);
+	printf("ramaprob initialise success \n");
+	fclose(ramaprob_file);
 
 }
 
@@ -555,7 +541,7 @@ inline double linear_decay(double distance,       /* distance of the 2 atoms */
 
 	if (distance > contact_cutoff + decay_width) return 0.0;
 	if (distance < contact_cutoff) return 1.0;
-	return (distance - contact_cutoff) / decay_width;
+	return 1 - (distance - contact_cutoff) / decay_width;
 }
 
 
@@ -593,6 +579,8 @@ double stress(AA *a, model_params *mod_params)
 	return erg;
 }
 
+
+/*translate rama probability into energy*/
 double ramabias(AA *prevaa, AA *a, AA *nextaa)
 {
 	//return 0.0;
@@ -629,7 +617,7 @@ double ramabias(AA *prevaa, AA *a, AA *nextaa)
 	}
 	
 	//fprintf(stderr,"aaa num %d id %c ind %d energy %g segphi %d segpsi %d phi %g psi %g \n",a->num, a->id, ind, -energy, segphi, segpsi, anglephi, anglepsi);
-	energy = energy < -3.91 ? energy + 3.91 : 0.0;
+	//energy = energy < -3.91 ? energy + 3.91 : 0.0;
 	return -energy;	// RT * 0.59219 = kcal/mol
 }
 
@@ -769,6 +757,9 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 		fact = 1.0;
 	else
 		fact = 1.0;
+	// Gary hack to put more internal Hbond with cyclic CYS-CYS
+	if(mod_params->Sbond_strength != 0) fact = 1.0;
+
 //	if( Distb( i, i ) * Distb( j, j ) == 0) fact /= 3.0;	
 	//fprintf(stderr,"hbond %d %c",a->num,a->id);
 	//fprintf(stderr," N: %g",a->n[0]);
@@ -1178,7 +1169,7 @@ double lowlevel_sbond(AA *a, AA *b, model_params *mod_params){
   
   double chi3 = -cosdihedral(x, y, z);	
   if(fabs(chi3) > mod_params->Sbond_dihedral_cutoff) return 0.0;
-
+	//specific_strength = specific_strength - 2 * (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
   // we have an S-S bond
   // compensate for CB(a)-CG(b) interactions
   //double energy_comp = vdw(a->g, b->cb, mod_params->rs + mod_params->rcb) +
@@ -2147,8 +2138,8 @@ void ADenergyNoClash(double* ADEnergies, int start, int end, Chain *chain, Chain
 					//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
 					break;
 				case 'C':
-					sideChainEnergy = scoreSideChainNoClash(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a, coordsSet, ind, numRand);
-					//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
+					//sideChainEnergy = scoreSideChainNoClash(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a, coordsSet, ind, numRand);
+					sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
 					break;
 				case 'M':
 					sideChainEnergy = scoreSideChainNoClash(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a, coordsSet, ind, numRand);
@@ -2258,7 +2249,7 @@ double external(AA *a, model_params *mod_params, vector molcom)
 
 	/* only calculate for constrained amino acids */
 	/* TODO: add constraint type other than 1 */
-	//if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
+	if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
 	/* C-O-M or n, ca, c */
 	//gridmap_initialise();
 	vector com;	/* N-Ca and Ca-C bonds */
@@ -2506,21 +2497,6 @@ double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 	else
 		seqdist = 1000 * abs(b->chainid - a->chainid);
 
-
-        if (mod_params->external_potential_type2 == 4 && abs(seqdist) == 1 ) {
-                double CaDistance = 0.0;
-                CaDistance = distance(a->ca, b->ca);
-		double NCDistance = 0.0;
-		if (seqdist == 1)
-                	NCDistance = distance(b->n, a->c);
-		else
-			NCDistance = distance(a->n,b->c);
-                if (1 || CaDistance > 5) retval += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-                if (1 || NCDistance > 1.5 || NCDistance < 1.2) retval += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
-        }
-
-
-
 	switch ( seqdist) {
 	case 1:
 		retval += exclude_neighbor(a, b, mod_params) + hbond(biasmap,a, b, mod_params) + proline(a, b);
@@ -2564,12 +2540,12 @@ double cyclic_energy(AA *a, AA *b, int type) {
 		HODistance = distance(a->h, b->o);
 		NODistance = distance(a->n, b->o);
 		HCDistance = distance(a->h, b->c);
-		
-		if (1 || CaDistance > 5) ans += 10 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-		if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 10 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345);
-		if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
-		if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
-		if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
+
+		if (1 || CaDistance > 5) ans += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+		//if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
+		//if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
+		//if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
+		//if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
 	}
 	return ans;
 	//return 0.;
