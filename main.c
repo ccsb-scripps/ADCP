@@ -267,7 +267,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				}
 			}
 
-			if (moved && rand()%1000 < 10)
+			if (moved && rand()%1000 < 5)
 				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 0);
 
 			inCache = 0;
@@ -275,6 +275,16 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
 				+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
 				+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
+
+			//do a hard minimization if energy is good
+			if (currTargetEnergy - targetBest <= goodEnergyDiff) {
+				// also do a hard minimization
+				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
+				// update the energy
+				currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
+								+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
+								+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
+			}
 
 			if (sim_params->protein_model.external_k[0] < external_k && currIndex % annealSteps == 0) {
 				sim_params->protein_model.external_k[0] = annealFactor*sim_params->protein_model.external_k[0];
@@ -287,12 +297,13 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 			if (currTargetEnergy - lastTargetEnergy < 0.001 && currTargetEnergy - lastTargetEnergy > -0.001) {
 				stuckcount++;
-				if (stuckcount >= 100) {
+				if (stuckcount >= 500) {
 					swapInd = rand() % (swapLength + 1);
-					while (swapEnergy[swapInd] >= currTargetEnergy) swapInd = rand() % (swapLength + 1);
+					while (swapEnergy[swapInd] >= currTargetEnergy + 1.0) swapInd = rand() % (swapLength + 1);
 					//swapInd = swapLength;
 					fprintf(stderr, "swap out stuck curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 					copybetween(chain, swapChains[swapInd]);
+					lastTargetEnergy = swapEnergy[swapInd];
 					lastIndex = currIndex;
 					stuckcount = 0;
 				}
@@ -312,10 +323,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				}
 
 				//do a hard minimization
-				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
-				currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
-									+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
-									+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
+				//transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
+				//currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
+				//					+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
+				//					+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
 				targetBest = currTargetEnergy;
 
 				//record energy and reset indices;
@@ -353,15 +364,19 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					//swapFile = fopen(swapname, "w+");
 					//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 					//fclose(swapname);
-					//copybetween(chain, swapChains[swapInd]);				
+					//copybetween(chain, swapChains[swapInd]);	
+					if (swapEnergy[swapInd] < 0) {
+						fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+						tests(swapChains[swapInd], biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+					}
 
 					fprintf(stderr, "swap in best curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
-					copybetween(swapChains[swapInd], chain);
-					swapEnergy[swapInd] = currTargetEnergy;
+					copybetween(swapChains[swapInd], swapChains[swapLength]);
+					swapEnergy[swapInd] = swapEnergy[swapLength];
 					//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 					//tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					copybetween(swapChains[swapInd2], swapChains[swapLength]);
-					swapEnergy[swapInd2] = swapEnergy[swapLength];
+					//copybetween(swapChains[swapInd2], swapChains[swapLength]);
+					//swapEnergy[swapInd2] = swapEnergy[swapLength];
 				}
 				targetBest = currTargetEnergy;
 				//write out best solutions to output pdb
@@ -414,27 +429,6 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 			}
 			// good energy found
 			else if (currTargetEnergy - targetBest <= goodEnergyDiff) {
-				// also do a hard minimization
-				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
-				// update the energy
-				currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
-								+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
-								+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
-				// if the energy after opt becomes the best, do the best energy procedure
-				if (currTargetEnergy < targetBest) {
-					fprintf(stderr, "swap in good to best %g swap %g best %g \n", currTargetEnergy, swapEnergy[swapLength], targetBest);
-					copybetween(swapChains[swapLength], chain);
-					swapEnergy[swapLength] = currTargetEnergy;
-					bestIndex = currIndex;
-					sim_params->protein_model.external_k[0] = external_k;
-					resetIndex = currIndex;
-					targetBest = currTargetEnergy;
-					lastGoodIndex = currIndex;
-					if (currTargetEnergy < 0) {
-						fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
-						tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
-					}					
-				}
 				// check RMSD with the swapping pool
 				for (ind = 0; ind < swapLength; ind++) {
 					if (swapEnergy[ind] == 9999.) swapInd = ind;
@@ -470,7 +464,10 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 						//swapFile = fopen(swapname, "w+");
 						//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 						//fclose(swapname);
-
+						if (swapEnergy[swapInd] < 0) {
+							fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
+							tests(swapChains[swapInd], biasmap, sim_params->tmask, sim_params, 0x11, NULL);
+						}
 						copybetween(swapChains[swapInd], chain);
 						swapEnergy[swapInd] = currTargetEnergy;
 						//fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
@@ -932,34 +929,12 @@ int main(int argc, char *argv[])
 	model_param_read(sim_params.prm,&(sim_params.protein_model),&(sim_params.flex_params));
 
 	ramaprob_initialise();
-	if (sim_params.protein_model.external_potential_type == 5) {		
-		transpts_initialise();
-		gridbox_initialise();
-		/* elements are 0:C, 1:N, 2:O, 3:HD, 4:S, 5:CA, 6:NA ,7:elec 8:desolv      */
-		gridmap_initialise("rigidReceptor.C.map", 0);
-		gridmap_initialise("rigidReceptor.N.map", 1);
-		gridmap_initialise("rigidReceptor.OA.map", 2);
-		gridmap_initialise("rigidReceptor.HD.map", 3);
-		gridmap_initialise("rigidReceptor.S.map", 4);
-		gridmap_initialise("rigidReceptor.A.map", 5);
-		gridmap_initialise("rigidReceptor.NA.map", 6);
-		gridmap_initialise("rigidReceptor.e.map", 7);
-		gridmap_initialise("rigidReceptor.d.map", 8);
-		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
-		fprintf(stderr, "AD Grid maps initialisation finished \n");
-	}
-
-
 
 
 	initialize_sidechain_properties(&(sim_params.protein_model));
 	vdw_cutoff_distances_calculate(&sim_params, stderr, 0);
 	peptide_init();
-
-
-
-	param_print(sim_params,sim_params.outfile); //read-in
-    
+	param_print(sim_params,sim_params.outfile); //read-in    
 
 	/* HERE STARTS THE ACTUAL SIMULATION */
 
@@ -1064,7 +1039,43 @@ int main(int argc, char *argv[])
 		   }
 	   }
 
-
+	if (sim_params.protein_model.external_potential_type == 5) {
+		int hasCYS = 0;
+		int hasAroC = 0;
+		int hasNA = 0;
+		for(int i = 1; i < chain->NAA; i++){
+          		if(chain->aa[i].id == 'C')
+                		hasCYS = 1;
+				if(chain->aa[i].id == 'F' || chain->aa[i].id == 'Y' || chain->aa[i].id == 'H')
+                		hasAroC = 1;
+				if(chain->aa[i].id == 'H')
+                		hasNA = 1;
+    		}
+		
+		transpts_initialise();
+		gridbox_initialise();
+		/* elements are 0:C, 1:N, 2:O, 3:HD, 4:SA, 5:CA, 6:NA ,7:elec 8:desolv      */
+		gridmap_initialise("rigidReceptor.C.map", 0);
+		gridmap_initialise("rigidReceptor.N.map", 1);
+		gridmap_initialise("rigidReceptor.OA.map", 2);
+		gridmap_initialise("rigidReceptor.HD.map", 3);
+		if (hasCYS)
+			gridmap_initialise("rigidReceptor.SA.map", 4);
+		else
+			gridmap_initialise("rigidReceptor.C.map", 4);
+		if (hasAroC)
+			gridmap_initialise("rigidReceptor.A.map", 5);
+		else
+			gridmap_initialise("rigidReceptor.C.map", 5);
+		if (hasNA)
+			gridmap_initialise("rigidReceptor.NA.map", 6);
+		else
+			gridmap_initialise("rigidReceptor.C.map", 6);
+		gridmap_initialise("rigidReceptor.e.map", 7);
+		gridmap_initialise("rigidReceptor.d.map", 8);
+		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
+		fprintf(stderr, "AD Grid maps initialisation finished \n");
+	}
 
 	/* MC */
 	simulate(chain,chaint,biasmap,&sim_params);
