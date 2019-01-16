@@ -98,7 +98,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 
 		for (i = 1; i < chain->NAA; i++) {
 			chain->Erg(0, i) = ADenergies[i-1];
-			fprintf(stderr," aaa %d %g \n",i, chain->Erg(0,i));
+			//fprintf(stderr," aaa %d %g \n",i, chain->Erg(0,i));
 			//chain->Erg(0, i) = ADenergy(chain->aa + i, mod_params);
 			chain->Erg(0, 0) += chain->Erg(0, i);
 		}
@@ -541,7 +541,7 @@ inline double linear_decay(double distance,       /* distance of the 2 atoms */
 
 	if (distance > contact_cutoff + decay_width) return 0.0;
 	if (distance < contact_cutoff) return 1.0;
-	return 1 - (distance - contact_cutoff) / decay_width;
+	return 1.0 - (distance - contact_cutoff) / decay_width;
 }
 
 
@@ -568,7 +568,6 @@ double stress(AA *a, model_params *mod_params)
 {
 	vector nca, cac;	/* N-Ca and Ca-C bonds */
 	double beta, erg = 0.0;
-
 	subtract(nca, a->ca, a->n);
 	subtract(cac, a->c, a->ca);
 	
@@ -1704,6 +1703,7 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 					sideChainCenter[1] += tc[i][j][1];
 					sideChainCenter[2] += tc[i][j][2];
 					clash = checkClash(tc[i][j][0], tc[i][j][1], tc[i][j][2], setCoords, ind);
+					//if (clash) score += 6.5;
 					if (clash) score += 6.5;
 				}
 
@@ -1722,7 +1722,7 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 		}
 	}
 
-	if (bestScore>90000) return 10.0;
+	if (bestScore>90000) return 100.0;
 
 	switch (a->id)
 	{
@@ -1823,27 +1823,30 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 		highHighHighIndex = lowHighHighIndex + 1;
 
 	int outofBox = 0;
-
+	double outofBoxPen = 0.0;
 	if (exactGridX < 0 || exactGridX > NX - 1) {
-		erg += ((exactGridX - NX / 2)*(exactGridX - NX / 2)) / 50.;
+		outofBoxPen = ((exactGridX - NX / 2)*(exactGridX - NX / 2)) / 10.;
 		outofBox = 1;
-		if (erg > 1000000000) {
-			return 0;
+		if (outofBoxPen > 1000000000) {
+			return 30;
 		}
+		erg += outofBoxPen;
 	}
 	if (exactGridY < 0 || exactGridY > NY - 1) {
-		erg += ((exactGridY - NY / 2)*(exactGridY - NY / 2)) / 50.;
+		outofBoxPen = ((exactGridY - NY / 2)*(exactGridY - NY / 2)) / 10.;
 		outofBox = 1;
-		if (erg > 1000000000) {
-			return 0;
+		if (outofBoxPen > 1000000000) {
+			return 30;
 		}
+		erg += outofBoxPen;
 	}
 	if (exactGridZ < 0 || exactGridZ > NZ - 1) {
-		erg += ((exactGridZ - NZ / 2)*(exactGridZ - NZ / 2)) / 50.;
+		outofBoxPen = ((exactGridZ - NZ / 2)*(exactGridZ - NZ / 2)) / 10.;
 		outofBox = 1;
-		if (erg > 1000000000) {
-			return 0;
+		if (outofBoxPen > 1000000000) {
+			return 30;
 		}
+		erg += outofBoxPen;
 	}
 	if (!outofBox)	{
 		perAtomtype = lowLowLowFrac * mapvalue[lowLowLowIndex] +
