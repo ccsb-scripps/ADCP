@@ -343,10 +343,10 @@ void biasmap_finalise(Biasmap *biasmap){
 /*make energy grid map smoother*/
 double lower_gridenergy(double E) {
 	//return E;
-	//if (E > 2.718) {
+	if (E > 2.718) {
 		//return log10f(E) + 9;
-	//	return log(E) + 1.718;
-	//}
+		return log(E) + 1.718;
+	}
 	//if (E > 10) {
 	//	//return log10f(E) + 9;
 	//	return log(E-9) + 10;
