@@ -267,7 +267,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				}
 			}
 
-			if (moved && rand()%1000 < 5)
+			if (moved && rand()%1000 < 10)
 				transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 0);
 
 			inCache = 0;
@@ -297,9 +297,9 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 
 			if (currTargetEnergy - lastTargetEnergy < 0.001 && currTargetEnergy - lastTargetEnergy > -0.001) {
 				stuckcount++;
-				if (stuckcount >= 500) {
+				if (stuckcount >= 1000) {
 					swapInd = rand() % (swapLength + 1);
-					while (swapEnergy[swapInd] >= currTargetEnergy + 1.0) swapInd = rand() % (swapLength + 1);
+					while (swapEnergy[swapInd] >= currTargetEnergy) swapInd = rand() % (swapLength + 1);
 					//swapInd = swapLength;
 					fprintf(stderr, "swap out stuck curr %g swap %g best %g\n", currTargetEnergy, swapEnergy[swapInd], targetBest);
 					copybetween(chain, swapChains[swapInd]);
@@ -321,13 +321,6 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					fprintf(stderr, "best energy found, reset temp\n");
 					sim_params->protein_model.external_k[0] = external_k;
 				}
-
-				//do a hard minimization
-				//transopt(chain, chaint, biasmap, 0, 0, &temp, sim_params, 1);
-				//currTargetEnergy = sim_params->protein_model.opt_totE_weight*totenergy(chain)
-				//					+ sim_params->protein_model.opt_extE_weight*extenergy(chain)
-				//					+ sim_params->protein_model.opt_firstlastE_weight*locenergy(chain);
-				targetBest = currTargetEnergy;
 
 				//record energy and reset indices;
 				resetIndex = currIndex;
@@ -851,7 +844,6 @@ void single_point_test(Chain *chain, Chaint *chaint, Biasmap *biasmap, simulatio
 
 
 	initialize(chain,chaint,sim_params); // PEPTIDE MODIFICATION!!
-
 	/* tests before projecting the peptide onto the CRANKITE model */
 	energy_matrix_calculate(chain,biasmap,&(sim_params->protein_model));
 //	fprintf(sim_params->outfile,"-+- after init %5d -+-\n", i);
@@ -877,6 +869,46 @@ void set_random_seed(simulation_params *sim_params) {
 	srand(sim_params->seed);
 #endif
 
+}
+
+void AD_init(Chain *chain, simulation_params *sim_params) {
+	if (sim_params->protein_model.external_potential_type == 5) {
+		int hasCYS = 0;
+		int hasAroC = 0;
+		int hasNA = 0;
+		for(int i = 1; i < chain->NAA; i++){
+          		if(chain->aa[i].id == 'C')
+                		hasCYS = 1;
+				if(chain->aa[i].id == 'F' || chain->aa[i].id == 'Y' || chain->aa[i].id == 'H')
+                		hasAroC = 1;
+				if(chain->aa[i].id == 'H')
+                		hasNA = 1;
+    		}
+		
+		transpts_initialise();
+		gridbox_initialise();
+		/* elements are 0:C, 1:N, 2:O, 3:HD, 4:SA, 5:CA, 6:NA ,7:elec 8:desolv      */
+		gridmap_initialise("rigidReceptor.C.map", 0);
+		gridmap_initialise("rigidReceptor.N.map", 1);
+		gridmap_initialise("rigidReceptor.OA.map", 2);
+		gridmap_initialise("rigidReceptor.HD.map", 3);
+		if (hasCYS)
+			gridmap_initialise("rigidReceptor.SA.map", 4);
+		else
+			gridmap_initialise("rigidReceptor.C.map", 4);
+		if (hasAroC)
+			gridmap_initialise("rigidReceptor.A.map", 5);
+		else
+			gridmap_initialise("rigidReceptor.C.map", 5);
+		if (hasNA)
+			gridmap_initialise("rigidReceptor.NA.map", 6);
+		else
+			gridmap_initialise("rigidReceptor.C.map", 6);
+		gridmap_initialise("rigidReceptor.e.map", 7);
+		gridmap_initialise("rigidReceptor.d.map", 8);
+		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
+		fprintf(stderr, "AD Grid maps initialisation finished \n");
+	}
 }
 
 int main(int argc, char *argv[])
@@ -929,8 +961,7 @@ int main(int argc, char *argv[])
 	model_param_read(sim_params.prm,&(sim_params.protein_model),&(sim_params.flex_params));
 
 	ramaprob_initialise();
-
-
+	
 	initialize_sidechain_properties(&(sim_params.protein_model));
 	vdw_cutoff_distances_calculate(&sim_params, stderr, 0);
 	peptide_init();
@@ -957,11 +988,12 @@ int main(int argc, char *argv[])
 		//}
 		/* build peptide from scratch, do not do tests */
 		build_peptide_from_sequence(chain,chaint,sim_params.seq, &sim_params);
+		AD_init(chain,&sim_params);
 		mark_fixed_aa_from_file(chain,&sim_params);
 		mark_constrained_aa_from_file(chain,&sim_params);
 		chkpeptide(chain->aa, chain->NAA, &(sim_params.protein_model));
 		update_sim_params_from_chain(chain,&sim_params); // updating NAA and seq
-		biasmap_initialise(chain,biasmap,&(sim_params.protein_model));
+		biasmap_initialise(chain,biasmap,&(sim_params.protein_model));		
 		energy_matrix_calculate(chain,biasmap,&(sim_params.protein_model));
 	    
 	    
@@ -1031,6 +1063,7 @@ int main(int argc, char *argv[])
 			initialize(chain, chaint, &sim_params); // peptide modification
 													/* allocate energy matrix and read in biasmap */
 			biasmap_initialise(chain, biasmap, &(sim_params.protein_model));
+			AD_init(chain,&sim_params);
 			energy_matrix_calculate(chain, biasmap, &(sim_params.protein_model));
 #ifndef PARALLEL
 			/* initial test */
@@ -1038,44 +1071,6 @@ int main(int argc, char *argv[])
 #endif
 		   }
 	   }
-
-	if (sim_params.protein_model.external_potential_type == 5) {
-		int hasCYS = 0;
-		int hasAroC = 0;
-		int hasNA = 0;
-		for(int i = 1; i < chain->NAA; i++){
-          		if(chain->aa[i].id == 'C')
-                		hasCYS = 1;
-				if(chain->aa[i].id == 'F' || chain->aa[i].id == 'Y' || chain->aa[i].id == 'H')
-                		hasAroC = 1;
-				if(chain->aa[i].id == 'H')
-                		hasNA = 1;
-    		}
-		
-		transpts_initialise();
-		gridbox_initialise();
-		/* elements are 0:C, 1:N, 2:O, 3:HD, 4:SA, 5:CA, 6:NA ,7:elec 8:desolv      */
-		gridmap_initialise("rigidReceptor.C.map", 0);
-		gridmap_initialise("rigidReceptor.N.map", 1);
-		gridmap_initialise("rigidReceptor.OA.map", 2);
-		gridmap_initialise("rigidReceptor.HD.map", 3);
-		if (hasCYS)
-			gridmap_initialise("rigidReceptor.SA.map", 4);
-		else
-			gridmap_initialise("rigidReceptor.C.map", 4);
-		if (hasAroC)
-			gridmap_initialise("rigidReceptor.A.map", 5);
-		else
-			gridmap_initialise("rigidReceptor.C.map", 5);
-		if (hasNA)
-			gridmap_initialise("rigidReceptor.NA.map", 6);
-		else
-			gridmap_initialise("rigidReceptor.C.map", 6);
-		gridmap_initialise("rigidReceptor.e.map", 7);
-		gridmap_initialise("rigidReceptor.d.map", 8);
-		//printf("transpoints box initialise succuss %i %g %g %g \n", transPtsCount, Xpts[0], Ypts[transPtsCount - 1], Zpts[transPtsCount - 1]);
-		fprintf(stderr, "AD Grid maps initialisation finished \n");
-	}
 
 	/* MC */
 	simulate(chain,chaint,biasmap,&sim_params);
