@@ -98,7 +98,7 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 
 		for (i = 1; i < chain->NAA; i++) {
 			chain->Erg(0, i) = ADenergies[i-1];
-			//fprintf(stderr," aaa %d %g \n",i, chain->Erg(0,i));
+			fprintf(stderr," aaa %d %g \n",i, chain->Erg(0,i));
 			//chain->Erg(0, i) = ADenergy(chain->aa + i, mod_params);
 			chain->Erg(0, 0) += chain->Erg(0, i);
 		}
@@ -106,12 +106,12 @@ void energy_matrix_calculate(Chain *chain, Biasmap *biasmap, model_params *mod_p
 		//chain->Erg(0, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
 
 	}
-
-	chain->Erg(chain->NAA - 1, 0) = global_energy(0,0,chain, NULL,biasmap, mod_params);
+	fprintf(stderr,"SS Energy ");
+	chain->Erg(chain->NAA - 1, 0) = global_energy(0, 0,chain, NULL,biasmap, mod_params);
 
 	if (mod_params->external_potential_type2 == 4)	chain->Erg(1, 0) = cyclic_energy((chain->aa) + 1, (chain->aa) + chain->NAA - 1, 0);
 	/* diagonal */
-	//fprintf(stderr,"diag ");
+	fprintf(stderr,"diag ");
 	//fprintf(stderr,"ENERGY1 START\n");
 	for (i = 1; i < chain->NAA; i++){
 		chain->Erg(i, i) = energy1((chain->aa) + i, mod_params);
@@ -568,6 +568,7 @@ double stress(AA *a, model_params *mod_params)
 {
 	vector nca, cac;	/* N-Ca and Ca-C bonds */
 	double beta, erg = 0.0;
+
 	subtract(nca, a->ca, a->n);
 	subtract(cac, a->c, a->ca);
 	
@@ -1162,12 +1163,12 @@ double lowlevel_sbond(AA *a, AA *b, model_params *mod_params){
   subtract(z, b->cb, b->g);
   
   double ang1 = cosine(x,y);
-  if(ang1 > 0.5|| ang1 < 0) return 0.0;
+  if(ang1 > 0.5|| ang1 < 0) return 0.0001;
   ang1 = cosine(y,z); 
-  if(ang1 > 0.5 || ang1 < 0 ) return 0.0;
+  if(ang1 > 0.5 || ang1 < 0 ) return 0.0001;
   
   double chi3 = -cosdihedral(x, y, z);	
-  if(fabs(chi3) > mod_params->Sbond_dihedral_cutoff) return 0.0;
+  if(fabs(chi3) > mod_params->Sbond_dihedral_cutoff) return 0.0001;
 	//specific_strength = specific_strength - 2 * (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
   // we have an S-S bond
   // compensate for CB(a)-CG(b) interactions
@@ -1201,8 +1202,7 @@ double sbond_energy(int start, int end, Chain *chain,  Chaint *chaint, Biasmap *
     }
   }
   
-  
-  
+
   vector *cyspos = (vector*)malloc(number_of_cys*sizeof(vector));
   for(i = 0; i < number_of_cys; i++){
 	if(cyslist[i] <= end && cyslist[i] >= start){
@@ -1216,7 +1216,7 @@ double sbond_energy(int start, int end, Chain *chain,  Chaint *chaint, Biasmap *
 	cyspos[i][2] = a->g[2];
   }	  
   
- 
+
   
   double *cysdist = (double*)malloc(number_of_cys*number_of_cys*sizeof(double));
   for(i = 0; i < number_of_cys; i++){
@@ -1226,7 +1226,7 @@ double sbond_energy(int start, int end, Chain *chain,  Chaint *chaint, Biasmap *
 	  }
   }
   
- 
+
   
   for(int i = 0; i < number_of_cys-1; i++){
 	
@@ -1247,7 +1247,6 @@ double sbond_energy(int start, int end, Chain *chain,  Chaint *chaint, Biasmap *
 		  nearestj = j; 	
 		}	
 	  }
-	  
 	  if(nearestj == -1) done = 1;
 	  else{
 		if(cyslist[nearestj] <= end && cyslist[nearestj] >= start){
@@ -1582,9 +1581,12 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 			a->g[2] = tc[a->SCRot][0][2];
 			break;
 		default:
-			a->g[0] = bestSideChainCenter[0];
-			a->g[1] = bestSideChainCenter[1];
-			a->g[2] = bestSideChainCenter[2];
+                        a->g[0] = tc[a->SCRot][0][0];
+                        a->g[1] = tc[a->SCRot][0][1];
+                        a->g[2] = tc[a->SCRot][0][2];
+			//a->g[0] = bestSideChainCenter[0];
+			//a->g[1] = bestSideChainCenter[1];
+			//a->g[2] = bestSideChainCenter[2];
 			break;
 
 	}
@@ -1703,7 +1705,6 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 					sideChainCenter[1] += tc[i][j][1];
 					sideChainCenter[2] += tc[i][j][2];
 					clash = checkClash(tc[i][j][0], tc[i][j][1], tc[i][j][2], setCoords, ind);
-					//if (clash) score += 6.5;
 					if (clash) score += 6.5;
 				}
 
@@ -1722,7 +1723,7 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 		}
 	}
 
-	if (bestScore>90000) return 100.0;
+	if (bestScore>90000) return 10.0;
 
 	switch (a->id)
 	{
@@ -1761,9 +1762,12 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 			a->g2[2] = tc[a->SCRot][0][2];
 			break;
 		default:
-			a->g[0] = bestSideChainCenter[0];
-			a->g[1] = bestSideChainCenter[1];
-			a->g[2] = bestSideChainCenter[2];
+                        a->g[0] = tc[a->SCRot][0][0];
+                        a->g[1] = tc[a->SCRot][0][1];
+                        a->g[2] = tc[a->SCRot][0][2];
+			//a->g[0] = bestSideChainCenter[0];
+			//a->g[1] = bestSideChainCenter[1];
+			//a->g[2] = bestSideChainCenter[2];
 			break;
 
 	}
@@ -1825,29 +1829,34 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 	int outofBox = 0;
 	double outofBoxPen = 0.0;
 	if (exactGridX < 0 || exactGridX > NX - 1) {
-		outofBoxPen = ((exactGridX - NX / 2)*(exactGridX - NX / 2)) / 10.;
+		outofBoxPen = ((exactGridX - NX / 2)*(exactGridX - NX / 2)) / 20.;
 		outofBox = 1;
 		if (outofBoxPen > 1000000000) {
-			return 30;
+			fprintf(stderr, "xX %g Y %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
+			return erg + 10;
 		}
 		erg += outofBoxPen;
 	}
 	if (exactGridY < 0 || exactGridY > NY - 1) {
-		outofBoxPen = ((exactGridY - NY / 2)*(exactGridY - NY / 2)) / 10.;
+		outofBoxPen = ((exactGridY - NY / 2)*(exactGridY - NY / 2)) / 20.;
 		outofBox = 1;
 		if (outofBoxPen > 1000000000) {
-			return 30;
+			fprintf(stderr, "X %g yY %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
+			return erg + 10;
 		}
 		erg += outofBoxPen;
 	}
 	if (exactGridZ < 0 || exactGridZ > NZ - 1) {
-		outofBoxPen = ((exactGridZ - NZ / 2)*(exactGridZ - NZ / 2)) / 10.;
+		outofBoxPen = ((exactGridZ - NZ / 2)*(exactGridZ - NZ / 2)) / 20.;
 		outofBox = 1;
 		if (outofBoxPen > 1000000000) {
-			return 30;
+			fprintf(stderr, "X %g Y %g zZ %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
+			return erg + 10;
 		}
 		erg += outofBoxPen;
 	}
+	//if (outofBox) 
+		//fprintf(stderr, "X %g Y %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
 	if (!outofBox)	{
 		perAtomtype = lowLowLowFrac * mapvalue[lowLowLowIndex] +
 			lowLowHighFrac * mapvalue[lowLowHighIndex] +
@@ -2544,7 +2553,8 @@ double cyclic_energy(AA *a, AA *b, int type) {
 		NODistance = distance(a->n, b->o);
 		HCDistance = distance(a->h, b->c);
 
-		if (1 || CaDistance > 5) ans += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+		if (1 || CaDistance > 4.819) ans += 5 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+		//if (CaDistance < 5) ans += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
 		//if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
 		//if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
 		//if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
