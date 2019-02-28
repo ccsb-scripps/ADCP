@@ -32,7 +32,8 @@
 #include"checkpoint_io.h"
 #include"flex.h"
 
-#define VER "PepTide 2.0, Copyright (c) 2004 - 2010 Alexei Podtelezhnikov\n\
+#define VER "ADCP 0.1, Copyright (c) Yuqi Zhang, Michel Sanner, CCSB Scripps \n\
+2004 - 2010 Alexei Podtelezhnikov\n\
 Nested Sampling by N.Burkoff\n"
 #define USE "Usage: %s [options] [[-f] infile | SEQuenCE] [-o outfile]\n\
 Options:\n\
@@ -879,12 +880,12 @@ void AD_init(Chain *chain, simulation_params *sim_params) {
 		for(int i = 1; i < chain->NAA; i++){
           		if(chain->aa[i].id == 'C')
                 		hasCYS = 1;
-				if(chain->aa[i].id == 'F' || chain->aa[i].id == 'Y' || chain->aa[i].id == 'H')
+			if(chain->aa[i].id == 'F' || chain->aa[i].id == 'Y' || chain->aa[i].id == 'H')
                 		hasAroC = 1;
-				if(chain->aa[i].id == 'H')
+			if(chain->aa[i].id == 'H')
                 		hasNA = 1;
     		}
-		
+
 		transpts_initialise();
 		gridbox_initialise();
 		/* elements are 0:C, 1:N, 2:O, 3:HD, 4:SA, 5:CA, 6:NA ,7:elec 8:desolv      */
