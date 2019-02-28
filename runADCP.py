@@ -49,7 +49,7 @@ class runADCP:
                 shutil.rmtree('./tmp_%s'%self.jobName)
             except OSError:
                 pass        
-            for element in ['C','A','S','N','NA','OA','HD','d','e']:
+            for element in ['C','A','SA','N','NA','OA','HD','d','e']:
                 if os.path.isfile('rigidReceptor.%s.map'%element):
                     os.remove('rigidReceptor.%s.map'%element)
             if os.path.isfile('transpoints'):
@@ -142,7 +142,7 @@ class runADCP:
             import zipfile
             with zipfile.ZipFile(targetFile, 'r') as zip_ref:
                 zip_ref.extractall('./tmp_%s/'%jobName)
-            for element in ['C','A','S','N','NA','OA','HD','d','e']:
+            for element in ['C','A','SA','N','NA','OA','HD','d','e']:
                 try:
                 #print("warningsaqd")
                     shutil.copy(os.path.join('./tmp_%s/'%jobName,targetFile[:-4],'rigidReceptor.%s.map'%element),os.getcwd())
@@ -155,7 +155,7 @@ class runADCP:
             numpy.savetxt(fff,ttt,fmt='%7.3f')
             fff.close()
         else:
-            for element in ['C','A','S','N','NA','OA','HD','d','e']:
+            for element in ['C','A','SA','N','NA','OA','HD','d','e']:
                 if not os.path.isfile("rigidReceptor.%s.map"%element):
                     print "WARNING: cannot locate map file rigidReceptor.%s.map"%element
 
