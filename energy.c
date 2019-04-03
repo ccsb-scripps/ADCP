@@ -343,12 +343,12 @@ void biasmap_finalise(Biasmap *biasmap){
 /*make energy grid map smoother*/
 double lower_gridenergy(double E) {
 	//return E;
-	if (E > 2.718) {
+	//if (E > 2.718) {
 		//return log10f(E) + 9;
-		return log(E) + 1.718;
-	}
+	//	return log(E) + 1.718;
+	//}
 	//if (E > 10) {
-	//	//return log10f(E) + 9;
+		//return log10f(E) + 9;
 	//	return log(E-9) + 10;
 	//}
 	return E;
@@ -758,7 +758,7 @@ double hbond(Biasmap *biasmap, AA *a, AA *b, model_params *mod_params)
 	else
 		fact = 1.0;
 	// Gary hack to put more internal Hbond with cyclic CYS-CYS
-	if(mod_params->Sbond_strength != 0) fact = 1.0;
+	if(mod_params->Sbond_strength != 0) fact = 1.;
 
 //	if( Distb( i, i ) * Distb( j, j ) == 0) fact /= 3.0;	
 	//fprintf(stderr,"hbond %d %c",a->num,a->id);
@@ -1156,20 +1156,24 @@ double lowlevel_sbond(AA *a, AA *b, model_params *mod_params){
   double dis = sqrt(distance(a->g,b->g));
   double specific_strength;
   specific_strength = linear_decay(dis,mod_params->Sbond_distance,mod_params->Sbond_cutoff);
-  if(specific_strength == 0.0) return 0.0; 
+  if(specific_strength == 0.0) return 0.0;
   vector x, y, z;
   subtract(x, a->g, a->cb);
   subtract(y, b->g, a->g);
   subtract(z, b->cb, b->g);
   
-  double ang1 = cosine(x,y);
-  if(ang1 > 0.5|| ang1 < 0) return 0.0001;
-  ang1 = cosine(y,z); 
-  if(ang1 > 0.5 || ang1 < 0 ) return 0.0001;
+  //double ang1 = cosine(x,y);
+  //if(dis < 3.0 && (ang1 > 0.5 || ang1 < 0)) return 0.0001;
+  //ang1 = cosine(y,z);
+  //if(dis < 3.0 && (ang1 > 0.5 || ang1 < 0)) return 0.0001;
   
-  double chi3 = -cosdihedral(x, y, z);	
-  if(fabs(chi3) > mod_params->Sbond_dihedral_cutoff) return 0.0001;
-	//specific_strength = specific_strength - 2 * (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
+  double chi3 = -cosdihedral(x, y, z);
+  if (fabs(chi3) > mod_params->Sbond_dihedral_cutoff && dis < 3.2) {
+  	specific_strength = specific_strength - (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
+   	//return 0.0001;
+  }
+  if (dis < 3.2) specific_strength *= 1.5;
+	//specific_strength = 0.2 + specific_strength - 2 * (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
   // we have an S-S bond
   // compensate for CB(a)-CG(b) interactions
   //double energy_comp = vdw(a->g, b->cb, mod_params->rs + mod_params->rcb) +
@@ -1179,7 +1183,7 @@ double lowlevel_sbond(AA *a, AA *b, model_params *mod_params){
 
 }
 
-
+///Gary modified version, can only handle up to 2 disulfide...might be only suitable for ADCP
 double sbond_energy(int start, int end, Chain *chain,  Chaint *chaint, Biasmap *biasmap,model_params *mod_params){
   if(mod_params->Sbond_strength == 0) return 0;
   int *cyslist = NULL;
@@ -1217,66 +1221,97 @@ double sbond_energy(int start, int end, Chain *chain,  Chaint *chaint, Biasmap *
   }	  
   
 
-  
+  double shortestdist = 10000000;
+  int shorti = 0;
+  int shortj = 0;
+  double temp = 10000000;
   double *cysdist = (double*)malloc(number_of_cys*number_of_cys*sizeof(double));
   for(i = 0; i < number_of_cys; i++){
 	  for(j = i+1; j < number_of_cys; j++){
-		double temp = distance(cyspos[i],cyspos[j]); 
+	  	if (cyslist[j]-cyslist[i]!=1) {
+			temp = distance(cyspos[i],cyspos[j]); 
+		}
 		cysdist[i*number_of_cys+j] = cysdist[j*number_of_cys+i] = temp;
+		if (temp < shortestdist) {
+			shortestdist=temp;
+			shorti = i;
+			shortj = j;
+		}
 	  }
   }
-  
+
+  if (shorti+shortj == 0) {
+	free(cyspos);
+	free(cysdist);
+    free(cyslist);
+    return 0.0;
+  }
 
   
-  for(int i = 0; i < number_of_cys-1; i++){
-	
-	
-	if(cyslist[i] <= end && cyslist[i] >= start){
-		a = chaint->aat + cyslist[i];  
-	}
-	else{
-	  a = chain->aa + cyslist[i];  
-	}
-	int done = 0;
-	while(done == 0){
-	  int nearestj = -1;	
-	  double nearest = (mod_params->Sbond_distance+mod_params->Sbond_cutoff)*(mod_params->Sbond_distance+mod_params->Sbond_cutoff); 
-	  for(int j = i+1; j < number_of_cys; j++){
-		if(cysdist[i*number_of_cys+j] < nearest){
-		  nearest = cysdist[i*number_of_cys+j];
-		  nearestj = j; 	
-		}	
-	  }
-	  if(nearestj == -1) done = 1;
-	  else{
-		if(cyslist[nearestj] <= end && cyslist[nearestj] >= start){
-		  b = chaint->aat + cyslist[nearestj];  
-	    }
-	    else{
-		  b = chain->aa + cyslist[nearestj];  
-	    }
-		
-		double temp = lowlevel_sbond(a,b,mod_params); 
-		
-		if(temp != 0){
-		  done = 1;
-		  ans += temp;	
-		  int k;
-		  for(k = i+1; k < number_of_cys; k++){
-			cysdist[k*number_of_cys+nearestj] = cysdist[nearestj*number_of_cys+k] = 1000;  
-		  }	   
-		
-		}
-		else{
-	      cysdist[i*number_of_cys+nearestj] = cysdist[nearestj*number_of_cys+i] = 1000; 
-	    }
-		
-		 
-	  }	  
-	}//end while  	
-	
- 
+  
+  if(cyslist[shorti] <= end && cyslist[shorti] >= start){
+	a = chaint->aat + cyslist[shorti];  
   }
+  else{
+    a = chain->aa + cyslist[shorti];  
+  }
+
+  if(cyslist[shortj] <= end && cyslist[shortj] >= start){
+	b = chaint->aat + cyslist[shortj];  
+  }
+  else{
+    b = chain->aa + cyslist[shortj];  
+  }
+  
+  temp = lowlevel_sbond(a,b,mod_params);
+  ans += temp;
+
+  if (number_of_cys<4) {
+  	free(cyspos);
+	free(cysdist);
+    free(cyslist);
+    return ans;
+  }
+  temp = 0;
+  shortestdist = 100000;
+  int shortii=0;
+  int shortjj=0;
+  for(int i = 0; i < number_of_cys - 1; i++){
+	for(int j = i+1; j < number_of_cys; j++) {
+		if (i==shorti || j==shortj || i==shortj || j==shorti)
+			cysdist[i*number_of_cys+j] = cysdist[i*number_of_cys+j] = 10000000;
+		else if (cysdist[i*number_of_cys+j]<shortestdist && cyslist[j]-cyslist[i]!=1){
+			shortestdist=cysdist[i*number_of_cys+j];
+			shortii = i;
+			shortjj = j;
+		}
+	}
+  }
+    
+  if (shortii+shortjj == 0) {
+	free(cyspos);
+	free(cysdist);
+    free(cyslist);
+    return ans;
+  }
+    
+  if(cyslist[shortii] <= end && cyslist[shortii] >= start){
+	a = chaint->aat + cyslist[shortii];  
+  }
+  else{
+    a = chain->aa + cyslist[shortii];  
+  }
+
+  if(cyslist[shortjj] <= end && cyslist[shortjj] >= start){
+	b = chaint->aat + cyslist[shortjj];
+  }
+  else{
+    b = chain->aa + cyslist[shortjj];  
+  }
+  
+  temp = lowlevel_sbond(a,b,mod_params);
+  ans += temp;
+
   
   free(cyspos);
   free(cysdist);
@@ -1581,12 +1616,9 @@ float scoreSideChain(int nbRot, int nbAtoms, double *charges, int *atypes,  doub
 			a->g[2] = tc[a->SCRot][0][2];
 			break;
 		default:
-                        a->g[0] = tc[a->SCRot][0][0];
-                        a->g[1] = tc[a->SCRot][0][1];
-                        a->g[2] = tc[a->SCRot][0][2];
-			//a->g[0] = bestSideChainCenter[0];
-			//a->g[1] = bestSideChainCenter[1];
-			//a->g[2] = bestSideChainCenter[2];
+			a->g[0] = bestSideChainCenter[0];
+			a->g[1] = bestSideChainCenter[1];
+			a->g[2] = bestSideChainCenter[2];
 			break;
 
 	}
@@ -1723,7 +1755,7 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 		}
 	}
 
-	if (bestScore>90000) return 10.0;
+	if (bestScore>90000) return 1000.0;
 
 	switch (a->id)
 	{
@@ -1762,12 +1794,13 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 			a->g2[2] = tc[a->SCRot][0][2];
 			break;
 		default:
-                        a->g[0] = tc[a->SCRot][0][0];
-                        a->g[1] = tc[a->SCRot][0][1];
-                        a->g[2] = tc[a->SCRot][0][2];
-			//a->g[0] = bestSideChainCenter[0];
-			//a->g[1] = bestSideChainCenter[1];
-			//a->g[2] = bestSideChainCenter[2];
+                        //a->g[0] = tc[a->SCRot][0][0];
+                        //a->g[1] = tc[a->SCRot][0][1];
+                        //a->g[2] = tc[a->SCRot][0][2];
+
+			a->g[0] = bestSideChainCenter[0];
+			a->g[1] = bestSideChainCenter[1];
+			a->g[2] = bestSideChainCenter[2];
 			break;
 
 	}
@@ -1817,7 +1850,7 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 		highHighHighFrac = highFracX * highFracY * highFracZ;
 
 	int lowLowLowIndex = getindex(exactGridX, exactGridY, exactGridZ);
-	if (lowLowLowIndex < 0 || lowLowLowIndex > NX*NY*NZ) return 0;
+	//if (lowLowLowIndex < 0 || lowLowLowIndex > NX*NY*NZ) return 0;
 	int	lowLowHighIndex = lowLowLowIndex + NX * NY,
 		lowHighLowIndex = lowLowLowIndex + NX,
 		lowHighHighIndex = lowLowHighIndex + NX,
@@ -1828,34 +1861,49 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 
 	int outofBox = 0;
 	double outofBoxPen = 0.0;
-	if (exactGridX < 0 || exactGridX > NX - 1) {
-		outofBoxPen = ((exactGridX - NX / 2)*(exactGridX - NX / 2)) / 20.;
+        double outD = 0.0;
+	if (exactGridX <= 0 || exactGridX >= NX - 1) {
+                outD = exactGridX <= 0 ?  (-exactGridX) : (exactGridX - NX + 1);
+                outofBoxPen = outD*outD;
+		//outofBoxPen = ((exactGridX - (NX - 1) / 2)*(exactGridX - (NX - 1) / 2)) / 20;
+		//outofBoxPen = ((exactGridX - (NX - 1) / 2)*(exactGridX - (NX - 1) / 2)) - (NX - 1) * (NX - 1) / 4;
 		outofBox = 1;
 		if (outofBoxPen > 1000000000) {
 			fprintf(stderr, "xX %g Y %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
 			return erg + 10;
 		}
 		erg += outofBoxPen;
+                //return 2.;
 	}
-	if (exactGridY < 0 || exactGridY > NY - 1) {
-		outofBoxPen = ((exactGridY - NY / 2)*(exactGridY - NY / 2)) / 20.;
+	if (exactGridY <= 0 || exactGridY >= NY - 1) {
+                outD = exactGridY <= 0 ?  (-exactGridY) : (exactGridY - NY + 1);
+                outofBoxPen = outD*outD;
+		//outofBoxPen = ((exactGridY - (NY - 1) / 2)*(exactGridY - (NY - 1) / 2)) / 20;
+		//outofBoxPen = ((exactGridY - (NY - 1) / 2)*(exactGridY - (NY - 1) / 2)) - (NY - 1) * (NY - 1) / 4;
 		outofBox = 1;
 		if (outofBoxPen > 1000000000) {
 			fprintf(stderr, "X %g yY %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
 			return erg + 10;
 		}
 		erg += outofBoxPen;
+                //return 2.;
 	}
-	if (exactGridZ < 0 || exactGridZ > NZ - 1) {
-		outofBoxPen = ((exactGridZ - NZ / 2)*(exactGridZ - NZ / 2)) / 20.;
+	if (exactGridZ <= 0 || exactGridZ >= NZ - 1) {
+                outD = exactGridZ <= 0 ?  (-exactGridZ) : (exactGridZ - NZ + 1);
+                outofBoxPen = outD*outD;
+
+		//outofBoxPen = ((exactGridZ - (NZ - 1) / 2)*(exactGridZ - (NZ - 1) / 2)) / 20;
+		//outofBoxPen = ((exactGridZ - (NZ - 1) / 2)*(exactGridZ - (NZ - 1) / 2)) - (NZ - 1) * (NZ - 1) / 4;
 		outofBox = 1;
 		if (outofBoxPen > 1000000000) {
 			fprintf(stderr, "X %g Y %g zZ %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
 			return erg + 10;
 		}
 		erg += outofBoxPen;
+                //return 2.;
 	}
-	//if (outofBox) 
+	if (outofBox)
+                return erg>10000?10000.:(erg/10); 
 		//fprintf(stderr, "X %g Y %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
 	if (!outofBox)	{
 		perAtomtype = lowLowLowFrac * mapvalue[lowLowLowIndex] +
@@ -1882,14 +1930,15 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 			highLowHighFrac * dmapvalue[highLowHighIndex] +
 			highHighLowFrac * dmapvalue[highHighLowIndex] +
 			highHighHighFrac * dmapvalue[highHighHighIndex]);
-	
+		//if (deSolv < 0.001)
+		//	deSolv = -0.1 * abscharge;
 		erg = perAtomtype + deSolv + eStatic;
 	}
 
 	//fprintf(stderr, "index %i exenergy %g atom %g estatic %g des %g \n", highHighHighIndex, erg, perAtomtype, deSolv, eStatic);
 	if (erg>1000000|| erg<-1000000){
 		//0 / 0;
-		fprintf(stderr, "index %i exenergy %g atom %g estatic %g des %g \n", i, erg, perAtomtype, deSolv, eStatic);
+		//fprintf(stderr, "index %i exenergy %g atom %g estatic %g des %g \n", i, erg, perAtomtype, deSolv, eStatic);
 		if (perAtomtype != 0) {
 			fprintf(stderr, "exenergy %g atom %g estatic %g des %g %g %g %g %g \n",
 				mapvalue[lowLowLowIndex], mapvalue[lowLowHighIndex],
@@ -1901,10 +1950,11 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
 			stop("baddd");
 		}
 
-		fprintf(stderr, "X %g Y %g Z %g \n", exactGridX, exactGridY, exactGridZ);
-		fprintf(stderr, "X %g Y %g Z %g \n", X, Y, Z);
+		//fprintf(stderr, "X %g Y %g Z %g \n", exactGridX, exactGridY, exactGridZ);
+		//fprintf(stderr, "X %g Y %g Z %g \n", X, Y, Z);
 		//stop("baddd");
 		//0/0;
+		
 	}
 	//fprintf(stderr, "index %i exenergy %g atom %g estatic %g des %g \n", highHighHighIndex, erg, perAtomtype, deSolv, eStatic);
 	return erg;
@@ -2150,8 +2200,8 @@ void ADenergyNoClash(double* ADEnergies, int start, int end, Chain *chain, Chain
 					//sideChainEnergy = gridenergy(a->g2[0], a->g2[1], a->g2[2], 2, -0.393) +  gridenergy(a->g[0], a->g[1], a->g[2], 0, 0.042);
 					break;
 				case 'C':
-					//sideChainEnergy = scoreSideChainNoClash(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a, coordsSet, ind, numRand);
-					sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
+					sideChainEnergy = scoreSideChainNoClash(CYS.nbRot, CYS.nbAtoms, CYS.charges, CYS.atypes, CYS.coords, a, coordsSet, ind, numRand);
+					//sideChainEnergy = gridenergy(a->g[0], a->g[1], a->g[2], 4, -0.095);
 					break;
 				case 'M':
 					sideChainEnergy = scoreSideChainNoClash(MET.nbRot, MET.nbAtoms, MET.charges, MET.atypes, MET.coords, a, coordsSet, ind, numRand);
@@ -2547,15 +2597,15 @@ double cyclic_energy(AA *a, AA *b, int type) {
 		double NODistance = 0.0;
 		double HCDistance = 0.0;
 
-		NCDistance = distance(a->n, b->c);
+		//NCDistance = distance(a->n, b->c);
 		CaDistance = distance(a->ca, b->ca);
-		HODistance = distance(a->h, b->o);
-		NODistance = distance(a->n, b->o);
-		HCDistance = distance(a->h, b->c);
+		//HODistance = distance(a->h, b->o);
+		//NODistance = distance(a->n, b->o);
+		//HCDistance = distance(a->h, b->c);
 
-		if (1 || CaDistance > 4.819) ans += 5 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-		//if (CaDistance < 5) ans += 50 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-		//if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 50 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
+		//if (1 || CaDistance > 5) ans += 10 * (sqrt(CaDistance) - 3.819);
+		if (1 || CaDistance > 5) ans += 5 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+		//if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 10 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
 		//if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
 		//if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
 		//if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
