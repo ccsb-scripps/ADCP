@@ -343,13 +343,13 @@ void biasmap_finalise(Biasmap *biasmap){
 /*make energy grid map smoother*/
 double lower_gridenergy(double E) {
 	//return E;
-	//if (E > 2.718) {
+	if (E > 2.718) {
 		//return log10f(E) + 9;
-	//	return log(E) + 1.718;
-	//}
-	//if (E > 10) {
+		return log(E) + 1.718;
+	}
+	//if (E > 10.) {
 		//return log10f(E) + 9;
-	//	return log(E-9) + 10;
+	//	return log(E-9) + 10.;
 	//}
 	return E;
 }
@@ -1172,7 +1172,7 @@ double lowlevel_sbond(AA *a, AA *b, model_params *mod_params){
   	specific_strength = specific_strength - (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
    	//return 0.0001;
   }
-  if (dis < 3.2) specific_strength *= 1.5;
+  if (dis < 3.2) specific_strength *= 1.2;
 	//specific_strength = 0.2 + specific_strength - 2 * (fabs(chi3) - mod_params->Sbond_dihedral_cutoff);
   // we have an S-S bond
   // compensate for CB(a)-CG(b) interactions
@@ -1718,9 +1718,13 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 		printf("%8.3f %8.3f %8.3f %8.3f\n",mat[2][0],mat[2][1],mat[2][2],mat[2][3]);
 		*/
 		/* apply transformation to canonical all rot side chains coordinates */
-
-
+                int rotCount = 0;
 		for (i = 0; i < nbRot; i++) {
+			if (nbRot > 20) {
+				i = rand()%nbRot;
+				rotCount ++;
+				if (rotCount > 20) break;
+			}
 			score = 0.0;
 			clash = 0;
 			sideChainCenter[0] = 0.0;
@@ -1741,7 +1745,6 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 				}
 
 				score += gridenergy(tc[i][j][0], tc[i][j][1], tc[i][j][2], atypes[j], charges[j]);
-				
 			}
 			//fprintf(stderr, "num %d id %c test nbROT %i type %i score %g \n",a->num,a->id, i, atypes[j], score);
 			//if (clash) break;
@@ -1903,7 +1906,7 @@ double gridenergy(double X, double Y, double Z, int i, double charge) {
                 //return 2.;
 	}
 	if (outofBox)
-                return erg>10000?10000.:(erg/10); 
+                return erg>10000?10000.:(erg/100); 
 		//fprintf(stderr, "X %g Y %g Z %g Erg %g \n", exactGridX, exactGridY, exactGridZ, outofBoxPen);
 	if (!outofBox)	{
 		perAtomtype = lowLowLowFrac * mapvalue[lowLowLowIndex] +
@@ -2552,7 +2555,7 @@ double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 		//fprintf(stderr,"e24 %g\n",retval);
 	}
 	
-	
+	double CaDistance = distance(a->ca, b->ca);
 	int seqdist;
 	if (a->chainid == b->chainid)
 		seqdist = b->num - a->num;
@@ -2562,11 +2565,13 @@ double energy2(Biasmap *biasmap, AA *a,  AA *b, model_params *mod_params)
 	switch ( seqdist) {
 	case 1:
 		retval += exclude_neighbor(a, b, mod_params) + hbond(biasmap,a, b, mod_params) + proline(a, b);
+		retval += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
 		//fprintf(stderr,"e25a %d %d %g\n",a->num,b->num,hbond(biasmap,a, b, mod_params));
 		//fprintf(stderr,"e25a %g\n",retval);
 		break;
 	case -1:
 		retval += exclude_neighbor(b, a, mod_params) + hbond(biasmap, b, a, mod_params) + proline(b, a);
+                retval += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
 		//fprintf(stderr,"e25b %d %d %g\n",a->num,b->num,hbond(biasmap,a, b, mod_params));
 		//fprintf(stderr,"e25b %g\n",retval);
 		break;
@@ -2603,11 +2608,15 @@ double cyclic_energy(AA *a, AA *b, int type) {
 		//NODistance = distance(a->n, b->o);
 		//HCDistance = distance(a->h, b->c);
 
-		//if (1 || CaDistance > 5) ans += 10 * (sqrt(CaDistance) - 3.819);
-		if (1 || CaDistance > 5) ans += 5 * (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
-		//if (1 || NCDistance > 1.5 || NCDistance < 1.2) ans += 10 * (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345) / 0.59219;
-		//if (a->id != 'P') ans += 5 * (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
-		//if (1 || NODistance > 3.5 || NODistance < 1.2) ans += 5 * (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
+		//if (1 || CaDistance < 5) ans += 10 * (sqrt(CaDistance) - 3.819);
+		if (CaDistance < 5) {
+			ans += (sqrt(CaDistance) - 3.819)*(sqrt(CaDistance) - 3.819);
+			ans += (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345);
+		} else ans += CaDistance;
+		//if (NCDistance > 2) ans += (sqrt(NCDistance) - 1.345)*(sqrt(NCDistance) - 1.345);
+		//else ans += NCDistance;
+		//if (a->id != 'P') ans += (sqrt(HODistance) - 3.13)*(sqrt(HODistance) - 3.13);
+		//if (1 || NODistance > 3.5 || NODistance < 1.2) ans += (sqrt(NODistance) - 2.25)*(sqrt(NODistance) - 2.25);
 		//if (a->id != 'P') ans += 5 * (sqrt(HCDistance) - 2.02)*(sqrt(HCDistance) - 2.02);
 	}
 	return ans;
