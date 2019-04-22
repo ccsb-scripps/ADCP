@@ -182,7 +182,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		externalloss += chain->Erg(1, 0) - cyclicBondEnergy;
 	}
 
-	loss = loss + SSloss + externalloss;
+	loss = 0.25 * (loss + SSloss) + externalloss;
 	if (loss < -10) external_k = 0.15 * external_k;
 
 	//loss = 0.25 * (loss + SSloss) + externalloss;
@@ -260,11 +260,6 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 /* Make a transmutate move. A translational move to a featured point*/
 void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
-
-        for (int i = 1; i < sim_params->NAA; i++) {
-		if (chain->aa[i].etc & FIXED) return;
-        }
-
 	if (sim_params->protein_model.external_potential_type != 5) {
 		return 0;
 	}
@@ -373,10 +368,6 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 	/*translational move*/
 	//
 	//double transvec[3][chain->NAA - 1];
-        for (int i = 1; i < sim_params->NAA; i++) {
-                if (chain->aa[i].etc & FIXED) return 0;
-        }
-
 
 	if (sim_params->protein_model.external_potential_type != 5) {
 		return 0;
@@ -542,11 +533,6 @@ static int transmove(Chain * chain, Chaint *chaint, Biasmap *biasmap, double amp
 /* Do a translational optimization in a Solis-Wets fashion. */
 int transopt(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params, int mod)
 {
-        for (int i = 1; i < sim_params->NAA; i++) {
-                if (chain->aa[i].etc & FIXED) return 0;
-        }
-
-
 	if (sim_params->protein_model.external_potential_type != 5) {
 		return 0;
 	}
