@@ -258,7 +258,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
     return 1;
 }
 /* Make a transmutate move. A translational move to a featured point*/
-void transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
+int transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, double logLstar, double * currE, simulation_params *sim_params)
 {
 	if (sim_params->protein_model.external_potential_type != 5) {
 		return 0;
