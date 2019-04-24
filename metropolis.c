@@ -265,7 +265,7 @@ int transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, do
 	}
 
 	//no transPts identified. transPtsCount == 1 means only the center of box is found.
-	if (transPtsCount == 1) return;
+	if (transPtsCount == 1) return 0;
 	double transvec[3];
 	//copy chain to chaint
 	for (int j = 1; j < chain->NAA; j++){
