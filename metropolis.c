@@ -182,10 +182,10 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 		externalloss += chain->Erg(1, 0) - cyclicBondEnergy;
 	}
 
-	loss = 0.25 * (loss + SSloss) + externalloss;
+	loss = (loss + SSloss) + externalloss;
 	if (loss < -10) external_k = 0.15 * external_k;
 
-	//loss = 0.25 * (loss + SSloss) + externalloss;
+	//if (loss < -10) loss = 0.25 * (loss + SSloss) + externalloss;
 	//if (externalloss > 0.) loss = loss + externalloss;
 
 
@@ -265,7 +265,7 @@ int transmutate(Chain * chain, Chaint *chaint, Biasmap *biasmap, double ampl, do
 	}
 
 	//no transPts identified. transPtsCount == 1 means only the center of box is found.
-	if (transPtsCount == 1) return;
+	if (transPtsCount == 1) return 0;
 	double transvec[3];
 	//copy chain to chaint
 	for (int j = 1; j < chain->NAA; j++){
