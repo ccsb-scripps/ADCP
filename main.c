@@ -209,7 +209,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 		char swapname[12];
 		sprintf(swapname, "swap%d.pdb", swapLength);
 		double swapEnergy[swapLength + 1];
-		Chain* swapChains[swapLength];
+		Chain* swapChains[swapLength + 1];
 
 		/*optimizing parameters*/
 		int noImprovHeatSteps = 1000000;
@@ -377,7 +377,7 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 					fprintf(sim_params->outfile, "-+- TEST BLOCK %5d -+-\n", i);
 					tests(chain, biasmap, sim_params->tmask, sim_params, 0x11, NULL);
 				}
-
+				//fprintf(stderr, "best found %g \n", swapEnergy[swapLength]);
 				//write to last element of swap pool;
 				copybetween(swapChains[swapLength], chain);
 				swapEnergy[swapLength] = currTargetEnergy;
@@ -385,6 +385,8 @@ void simulate(Chain * chain, Chaint *chaint, Biasmap* biasmap, simulation_params
 				//swapFile = fopen(swapname, "w+");
 				//pdbprint(chain->aa, chain->NAA, &(sim_params->protein_model), swapFile, &currTargetEnergy);
 				//fclose(swapname);
+				//fprintf(stderr, "best found2 %g \n", swapEnergy[swapLength]);
+				continue;
 			}
 			else if ((currIndex - bestIndex) > noImprovStopSteps) {
 				fprintf(stderr, "No improvement after %d runs last best %d, stops here.\n", i, bestIndex);
