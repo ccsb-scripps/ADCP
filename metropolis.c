@@ -183,9 +183,10 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	}
 
 	//loss = (loss + SSloss) + externalloss;
-	if (loss < -10) external_k = 0.15 * external_k;
 
 	loss = (loss + 0.25 * SSloss) + externalloss;
+	if (loss < -10) external_k = 0.15 * external_k;
+
 	//if (externalloss > 0.) loss = loss + externalloss;
 
 
