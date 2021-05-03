@@ -71,7 +71,7 @@ static int allowed(Chain *chain, Chaint *chaint, Biasmap* biasmap, int start, in
 	double externalloss = 0.0;
 	double ADEnergy_Chaint[end-start+1];
 	//double* ADEnergy_Chaint;
-	if (sim_params->protein_model.external_potential_type == 5){
+	if (sim_params->protein_model.external_potential_type == 5){ // AD potential enabled
 		ADenergyNoClash(ADEnergy_Chaint,start,end,chain,chaint,&(sim_params->protein_model), 0);
 		//ADEnergy_Chaint = ADenergyNoClash(start,end,chain,chaint,&(sim_params->protein_model), 0);
 		for (i = start; i <= end; i++){
@@ -895,7 +895,7 @@ static int crankshaft(Chain * chain, Chaint *chaint, Biasmap *biasmap, double am
 	    end = start + len + 1;
 	}
 	if (start < 0 || end < 0) { //hit a -1 in the table!
-		stop("Something has gone wrong when selecting aminio acids for the MC move.\n");
+		stop("Something has gone wrong when selecting amino acids for the MC move.\n");
 	}
 	//fprintf(stderr,"move residues %d -- %d (len: %d bonds),",start,end,len+1);
 	for (int ai=start; ai<end; ai++) {
