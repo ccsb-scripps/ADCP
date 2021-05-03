@@ -1624,9 +1624,9 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 	int i, j;
 	double n; /* used to normalized vectors */
 	double sideChainCenter[3], bestSideChainCenter[3];
-	float N[3] = { a->n[0], a->n[1], a->n[2] }; /* coordiantes from 1crn.pdb:TYR29:N */
-	float CA[3] = { a->ca[0], a->ca[1], a->ca[2] }; /* coordiantes from 1crn.pdb:TYR29:CA */
-	float CB[3] = { a->cb[0], a->cb[1], a->cb[2] }; /* coordiantes from 1crn.pdb:TYR29:CB */
+	float N[3] = { a->n[0], a->n[1], a->n[2] }; /* coordinates from 1crn.pdb:TYR29:N */
+	float CA[3] = { a->ca[0], a->ca[1], a->ca[2] }; /* coordinates from 1crn.pdb:TYR29:CA */
+	float CB[3] = { a->cb[0], a->cb[1], a->cb[2] }; /* coordinates from 1crn.pdb:TYR29:CB */
 	float v1[3], v2[3], v3[3], mat[3][4]; /* used to compute xform matrix to align canonical rotamer to amino acid */
 	float tc[nbRot][nbAtoms][3]; /* list of transformed coordinates */
 					   /*
@@ -1700,7 +1700,7 @@ double scoreSideChainNoClash(int nbRot, int nbAtoms, double charges[nbAtoms], in
 				tc[i][j][1] = mat[1][0] * coords[i][j][0] + mat[1][1] * coords[i][j][1] + mat[1][2] * coords[i][j][2] + mat[1][3];
 				tc[i][j][2] = mat[2][0] * coords[i][j][0] + mat[2][1] * coords[i][j][1] + mat[2][2] * coords[i][j][2] + mat[2][3];
 				//fprintf(stderr, "test type %i\n", atypes[i]);
-				if (atypes[j]!=3) {
+				if (atypes[j]!=3) { // ignore H atoms when calculating center of side chain
 					sideChainCenter[0] += tc[i][j][0];
 					sideChainCenter[1] += tc[i][j][1];
 					sideChainCenter[2] += tc[i][j][2];
@@ -1927,11 +1927,14 @@ static int indMoved(int ind, int start, int end){
 
 void ADenergyNoClash(double* ADEnergies, int start, int end, Chain *chain, Chaint *chaint, model_params *mod_params, int mod)
 {
-	/* only calculate for constrained amino acids */
+  //MS what does mod do in ADenergyNoClash
+  /* only calculate for constrained amino acids */
 	/* TODO: add constraint type other than 1 */
 	//if ((mod_params->external_potential_type != 1 && mod_params->external_potential_type != 3) || !(a->etc & CONSTRAINED)) return 0.0;
 	/* C-O-M or n, ca, c */
 	//gridmap_initialise();
+
+        // MS that limits the size of peptide to 30*NAA atoms
 	double coordsSet[30 * chain->NAA];
 	//double *currgridmapvalues = malloc(NX*NY*NZ * sizeof(double));
 
