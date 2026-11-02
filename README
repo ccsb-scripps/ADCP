@@ -1,3 +1,12 @@
+NOTE (November 2026): this repository holds the source of AutoDock CrankPep (ADCP) as
+published in 2019 (tag 2019-papers marks the last commit of that period). It is no longer
+maintained and is kept for reference. It was moved here from github.com/ccsb-scripps/ADCP.
+  Current ADCP:          https://github.com/sannerlab/ADCP
+  Current engine:        https://github.com/sannerlab/Crankite_AD
+  Documentation:         https://sannerlab.github.io/software/adcp/
+
+------------------------------------------------------------------------------------------
+
 AutoDock CrankPep
 
 AutoDock CrankPep or ADCP is an AutoDock docking engine specialized for docking peptides. 
